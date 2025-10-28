@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SSH Updater – Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/sshupdater.ico" type="image/x-icon" />
+  <style>
+    /* ---------- THEME (same vars as index.html) ---------- */
+    :root{
+      --bg: #f5f7fb;
+      --text: #1e2430;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --card-border: #e5e7eb;
+      --header: #1f2a44;
+      --brand-on: #ffffff;
+      --primary: #2d6cdf;
+      --primary-ghost: #e8efff;
+      --danger: #dc3545;
+      --code-bg: #0f1d2a;
+      --code-fg: #e6edf3;
+      --table-head: #fafafa;
+      --shadow: 0 4px 16px rgba(0,0,0,.06);
+      --chip-bg: #eef2ff;
+      --input-bg: #fff;
+      --radius: 12px;
+    }
+    body.dark{
+      --bg: #0e1116;
+      --text: #e6e8ee;
+      --muted: #98a2b3;
+      --card: #151a22;
+      --card-border: #222a36;
+      --header: #0b1220;
+      --brand-on: #ffffff;
+      --primary: #4f83ff;
+      --primary-ghost: #0f1d33;
+      --danger: #ff5c6c;
+      --code-bg: #0b1220;
+      --code-fg: #e6edf3;
+      --table-head: #101825;
+      --shadow: 0 6px 24px rgba(0,0,0,.35);
+      --chip-bg: #182238;
+      --input-bg: #0f1623;
+    }
+
+    /* ---------- BASE ---------- */
+    * { box-sizing: border-box; }
+    html, body { height:100%; }
+    body {
+      margin:0;
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* Header */
+    header {
+      background: var(--header);
+      color: var(--brand-on);
+      padding: 12px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .logo-badge { display:inline-flex; align-items:center; justify-content:center; height:32px; width:32px; border-radius:8px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); overflow:hidden; }
+    .logo-badge img { display:block; height:28px; width:28px; object-fit:contain; }
+    .brand strong { font-size:1.1rem; font-weight:700; }
+    .toolbar { display:flex; gap:8px; align-items:center; }
+
+    /* Dark toggle (same look) */
+    .toggle{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:999px; cursor:pointer; user-select:none;}
+    .toggle input{appearance:none; width:28px; height:16px; background:#cbd5e1; border-radius:999px; position:relative; outline:none;}
+    .toggle input:after{content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .2s ease;}
+    .toggle input:checked{background:#60a5fa;}
+    .toggle input:checked:after{transform:translateX(12px);}
+
+    /* Centered login card */
+    .wrap {
+      display:grid;
+      place-items:center;
+      padding: 24px 16px;
+    }
+    .card {
+      width: min(520px, 100%);
+      background: var(--card);
+      border:1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px 16px 20px;
+    }
+    h1 { margin: 6px 0 14px; text-align:center; }
+
+    label { display:block; font-weight:700; margin:10px 0 6px; }
+    input[type=text], input[type=password]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid var(--card-border);
+      background: var(--input-bg);
+      color: var(--text);
+      outline:none;
+    }
+    input::placeholder{ color: var(--muted); }
+    /* Improve visibility with browser autofill */
+    input:-webkit-autofill {
+      -webkit-text-fill-color: var(--text);
+      transition: background-color 9999s ease-in-out 0s;
+      box-shadow: 0 0 0px 1000px var(--input-bg) inset;
+    }
+
+    .actions { display:flex; justify-content:center; gap:8px; margin-top:14px; }
+    button {
+      border:0; border-radius:8px; padding:10px 16px; cursor:pointer; font-weight:800;
+      background: var(--primary); color:#fff;
+    }
+    .ghost { background: transparent; color: var(--text); border:1px solid var(--card-border); }
+    .msg { margin-top:10px; text-align:center; font-size:14px; color: var(--muted); min-height:20px; }
+
+    @media (max-width:520px){
+      .card { padding:16px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo-badge"><img src="/sshupdater.png" alt="SSH Updater logo" onerror="this.onerror=null;this.src='/ssh-updater-logo-134x134.png';" /></span>
+      <strong>SSH Updater</strong>
+    </div>
+    <div class="toolbar">
+      <label class="toggle" title="Toggle dark mode">
+        <span style="font-size:12px;opacity:.9;">Dark</span>
+        <input id="darkToggle" type="checkbox" />
+      </label>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="card" role="dialog" aria-labelledby="title" aria-describedby="form">
+      <h1 id="title">Login</h1>
+      <form id="form" onsubmit="return login(event)">
+        <label for="username">Username</label>
+        <input id="username" type="text" placeholder="Enter username" autocomplete="username" required />
+
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="Enter password" autocomplete="current-password" required />
+
+        <div class="actions">
+          <button type="submit">Login</button>
+          <!-- NEW: Register button (hidden by default; shown only if no users in DB) -->
+          <button type="button" id="registerBtn" class="ghost" style="display:none" onclick="registerUser()">Register</button>
+        </div>
+        <div id="msg" class="msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ----- Dark mode (persisted; same key as index.html) -----
+    const darkToggle = document.getElementById('darkToggle');
+    const savedTheme = localStorage.getItem('sshupdater_theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.body.classList.add('dark');
+      darkToggle.checked = true;
+    }
+    darkToggle.addEventListener('change', () => {
+      document.body.classList.toggle('dark', darkToggle.checked);
+      localStorage.setItem('sshupdater_theme', darkToggle.checked ? 'dark' : 'light');
+    });
+
+    // ----- Login -----
+    async function login(e){
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.textContent = 'Signing in…';
+
+      try{
+        const r = await fetch('/api/auth/login', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await r.json().catch(()=> ({}));
+        if (r.ok && data && data.ok){
+          msg.textContent = 'OK. Redirecting…';
+          location.href = '/';
+        } else {
+          msg.textContent = data.error || 'Invalid username or password.';
+        }
+      } catch(err){
+        msg.textContent = 'Network error: ' + err.message;
+      }
+      return false;
+    }
+
+    // ----- Register (only when no users) -----
+    async function registerUser(){
+      const msg = document.getElementById('msg');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password){
+        msg.textContent = 'Choose a username and password first.';
+        return;
+      }
+
+      msg.textContent = 'Creating user…';
+      try{
+        const r = await fetch('/api/auth/register', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({ username, password })
+        });
+        const data = await r.json().catch(()=> ({}));
+        if (r.ok && data && data.ok){
+          msg.textContent = 'User created. You can login now.';
+          // Once a user exists, hide the Register button
+          const rb = document.getElementById('registerBtn');
+          if (rb) rb.style.display = 'none';
+        } else {
+          msg.textContent = data.error || 'Register failed.';
+        }
+      } catch(err){
+        msg.textContent = 'Network error: ' + err.message;
+      }
+    }
+
+    // ----- Show Register only if DB has zero users -----
+    (async function checkHasUsers(){
+      try{
+        const r = await fetch('/api/auth/hasUsers', { cache: 'no-store' });
+        const j = await r.json();
+        const rb = document.getElementById('registerBtn');
+        if (rb) rb.style.display = (j && j.hasUsers === false) ? 'inline-block' : 'none';
+      }catch(e){
+        // If the check fails (fresh install / API warming), show it to allow bootstrap
+        const rb = document.getElementById('registerBtn');
+        if (rb) rb.style.display = 'inline-block';
+      }
+    })();
+
+    // Focus username on load for speed
+    window.addEventListener('DOMContentLoaded', () => {
+      const u = document.getElementById('username');
+      if (u) u.focus();
+    });
+  </script>
+</body>
+</html>
+
