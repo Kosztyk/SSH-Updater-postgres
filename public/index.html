@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SSH Updater</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/sshupdater.ico" type="image/x-icon" />
+  <style>
+    /* ---------- THEME (CSS variables) ---------- */
+    :root{
+      --bg: #f5f7fb;
+      --text: #1e2430;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --card-border: #e5e7eb;
+      --header: #1f2a44;
+      --brand-on: #ffffff;
+      --primary: #2d6cdf;
+      --primary-ghost: #e8efff;
+      --danger: #dc3545;
+      --pill-ok-bg: #e9f7ef;
+      --pill-ok-fg: #1b7f38;
+      --pill-fail-bg: #fde8e9;
+      --pill-fail-fg: #a91e2c;
+      --code-bg: #0f1d2a;
+      --code-fg: #e6edf3;
+      --table-head: #fafafa;
+      --shadow: 0 4px 16px rgba(0,0,0,.06);
+      --chip-bg: #eef2ff;
+      --input-bg: #fff;
+    }
+    body.dark{
+      --bg: #0e1116;
+      --text: #e6e8ee;
+      --muted: #98a2b3;
+      --card: #151a22;
+      --card-border: #222a36;
+      --header: #0b1220;
+      --brand-on: #ffffff;
+      --primary: #4f83ff;
+      --primary-ghost: #0f1d33;
+      --danger: #ff5c6c;
+      --pill-ok-bg: #0f2a1b;
+      --pill-ok-fg: #4ed19c;
+      --pill-fail-bg: #2a1214;
+      --pill-fail-fg: #ff8b96;
+      --code-bg: #0b1220;
+      --code-fg: #e6edf3;
+      --table-head: #101825;
+      --shadow: 0 6px 24px rgba(0,0,0,.35);
+      --chip-bg: #182238;
+      --input-bg: #0f1623;
+    }
+
+    /* ---------- BASE ---------- */
+    *{box-sizing:border-box}
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    .hidden { display:none !important; }
+
+    /* Header */
+    header { background:var(--header); color:var(--brand-on); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .logo-badge { display:inline-flex; align-items:center; justify-content:center; height:32px; width:32px; border-radius:8px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); overflow:hidden; }
+    .logo-badge img { display:block; height:28px; width:28px; object-fit:contain; }
+    .brand strong { font-size:1.1rem; font-weight:700; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+    /* Dark toggle */
+    .toggle{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:999px; cursor:pointer; user-select:none;}
+    .toggle input{appearance:none; width:28px; height:16px; background:#cbd5e1; border-radius:999px; position:relative; outline:none;}
+    .toggle input:after{content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .2s ease;}
+    .toggle input:checked{background:#60a5fa;}
+    .toggle input:checked:after{transform:translateX(12px);}
+
+    /* Main & cards */
+    main { max-width:1100px; margin:20px auto; padding:0 16px; }
+    .card { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:16px; box-shadow:var(--shadow); margin-bottom:16px; }
+    label { display:block; font-weight:600; margin-top:8px; }
+    input[type=text], input[type=password], input[type=number], textarea, select {
+      width:100%; max-width:100%; padding:10px; border:1px solid var(--card-border); border-radius:8px; background:var(--input-bg); color:var(--text);
+    }
+    textarea { min-height:100px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:24px; row-gap:12px; align-items:start; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+    button { border:0; border-radius:8px; padding:10px 14px; cursor:pointer; font-weight:700; }
+    .primary { background:var(--primary); color:#fff; }
+    .danger { background:var(--danger); color:#fff; }
+    .ghost { background:transparent; border:1px solid var(--card-border); color:var(--text); }
+    .secondary { background:var(--primary-ghost); color:var(--text); border:1px solid var(--card-border); }
+    .secondary:hover { filter:brightness(1.05); }
+
+    /* Table + wrapper for mobile scroll */
+    .table-wrap { overflow:auto; -webkit-overflow-scrolling:touch; border-radius:12px; background:var(--card); border:1px solid var(--card-border); }
+    table { width:100%; border-collapse:collapse; min-width:720px; }
+    th, td { text-align:left; padding:10px; border-bottom:1px solid var(--card-border); font-size:14px; vertical-align: top; }
+    th { background:var(--table-head); position:sticky; top:0; z-index:1; }
+
+    code { background:rgba(99,102,241,.12); padding:2px 6px; border-radius:4px; }
+    .mono { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre-wrap; max-height:250px; overflow:auto; background:var(--code-bg); color:var(--code-fg); border-radius:8px; padding:12px; }
+
+    /* Upload label styled like a button */
+    .btn{ display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; height:36px; border-radius:8px; font-weight:700; cursor:pointer; line-height:1; box-sizing:border-box; }
+    .btn.ghost{ background:transparent; border:1px solid var(--card-border); color:var(--text); }
+    .btn.ghost:hover{ filter:brightness(1.06); }
+    label.btn{ margin:0; font-weight:700; display:inline-flex !important; }
+    #scriptFile{ display:none; }
+
+    /* Modal (Logs) */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+    .modal { width:min(1100px, 100%); max-height:85vh; overflow:auto; background:var(--card); border:1px solid var(--card-border); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .modal header { position:sticky; top:0; background:var(--header); color:#fff; border-radius:14px 14px 0 0; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .modal header h3 { margin:0; font-size:1rem; }
+    .modal .content { padding:14px; }
+    .close-btn { background:transparent; border:1px solid rgba(255,255,255,0.6); color:#fff; border-radius:8px; padding:6px 10px; font-weight:700; cursor:pointer; }
+    .close-btn:hover { background:rgba(255,255,255,0.16); }
+
+    /* Host result blocks inside modal */
+    .host-block { background:var(--bg); border:1px solid var(--card-border); border-radius:10px; margin:10px 0; }
+    .host-head { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--card-border); flex-wrap:wrap; gap:8px; }
+    .host-title { font-weight:700; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .ok { background:var(--pill-ok-bg); color:var(--pill-ok-fg); }
+    .fail { background:var(--pill-fail-bg); color:var(--pill-fail-fg); }
+    .small { opacity:.8; font-size:12px; margin-left:8px; }
+    .host-body { padding:12px; }
+    .host-body .mono { max-height:none; }
+
+    /* Small modal (Add user / Edit host) */
+    .modal-mini .modal { width:min(620px, 100%); max-height:85vh; }
+    .modal-mini .modal .row { grid-template-columns: 1fr; }
+    .modal-mini .modal .actions { justify-content:flex-end; }
+
+    /* Host chooser list */
+    .host-chooser { max-height: 220px; overflow:auto; border:1px solid var(--card-border); border-radius:8px; padding:8px; background:var(--bg); }
+    .host-chooser label { display:flex; align-items:center; gap:8px; margin:6px 0; font-weight:500; }
+    .host-chooser .muted { color:var(--muted); font-size:12px; }
+
+    /* Status bar */
+    .statusbar{ display:flex; gap:10px; flex-wrap:wrap; }
+    .stat{ background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow); }
+    .stat .n{ font-weight:800; font-size:18px; }
+    .stat .l{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+
+    /* Quick filters / search / sort */
+    .filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin: 8px 0 12px; }
+    .chip { background:var(--chip-bg); border:1px solid var(--card-border); padding:6px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; font-weight:600; }
+    .chip input{ transform: translateY(1px); }
+    .inline-field { display:flex; align-items:center; gap:8px; }
+    .inline-field label { margin:0; font-weight:700; font-size:13px; color:var(--muted); }
+    .inline-field input[type="text"] { width:220px; }
+    .inline-field select { width:220px; }
+
+    /* Tiny badge for path count */
+    .badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 6px; border-radius:9px; background:var(--primary-ghost); border:1px solid var(--card-border); font-size:12px; font-weight:800; margin-left:6px; }
+    .namecell { display:flex; align-items:center; gap:6px; }
+
+    @media (max-width:900px) { .row { grid-template-columns:1fr; } }
+    @media (max-width:600px){
+      .inline-field input[type="text"], .inline-field select { width:100%; }
+      .modal-backdrop { padding:0; }
+      .modal { width:100vw; height:100vh; max-height:none; border-radius:0; }
+      .modal header { border-radius:0; }
+      .modal .content { height: calc(100vh - 56px); overflow:auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo-badge"><img src="/sshupdater.png" alt="SSH Updater logo" onerror="this.onerror=null;this.src='/ssh-updater-logo-134x134.png';" /></span>
+      <strong>SSH Updater</strong>
+    </div>
+    <div class="toolbar">
+      <label class="toggle" title="Toggle dark mode">
+        <span style="font-size:12px;opacity:.9;">Dark</span>
+        <input id="darkToggle" type="checkbox" />
+      </label>
+      <button class="adduser" onclick="openAddUser()">Add User</button>
+      <button class="logout" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- STATUS BAR -->
+    <div class="statusbar" style="margin-bottom:12px;">
+      <div class="stat"><div class="n" id="stat_total">0</div><div class="l">Total hosts</div></div>
+      <div class="stat"><div class="n" id="stat_with">0</div><div class="l">With containers</div></div>
+      <div class="stat"><div class="n" id="stat_paths">0</div><div class="l">Container paths</div></div>
+    </div>
+
+    <!-- Add Host -->
+    <div class="card">
+      <h3 style="margin:0 0 8px">Add Host</h3>
+      <div class="row">
+        <div>
+          <label>Display Name (optional)</label>
+          <input id="name" type="text" placeholder="e.g. web-1" />
+        </div>
+        <div>
+          <label>IP / Hostname</label>
+          <input id="ip" type="text" placeholder="192.168.1.10" />
+        </div>
+        <div>
+          <label>SSH User</label>
+          <input id="user" type="text" placeholder="root or ubuntu" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input id="password" type="password" placeholder="********" />
+        </div>
+        <div>
+          <label>Port</label>
+          <input id="port" type="number" value="22" />
+        </div>
+        <div>
+          <label>Is Root User?</label>
+          <input id="isRoot" type="checkbox" /> <small>(check if user is already root)</small>
+        </div>
+      </div>
+
+      <!-- Containers config -->
+      <div class="row">
+        <div>
+          <label>Has Docker containers?</label>
+          <input id="hasContainers" type="checkbox" /> <small>(enable to update compose projects)</small>
+        </div>
+
+        <!-- Shown only when hasContainers is checked -->
+        <div id="add_containers_group" class="hidden">
+          <label>Container path(s) on host <small>(one per line)</small></label>
+          <textarea id="containerPaths" placeholder="/root/app1
+/root/app2" disabled></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="addHost()">Add</button>
+        <button class="ghost" onclick="refresh(true)">Refresh</button>
+        <button class="danger" onclick="runAll()">Update all Hosts</button>
+        <button class="secondary" onclick="runContainersAll()">Update all containers</button>
+      </div>
+      <div id="addMsg"></div>
+    </div>
+
+    <!-- Run custom command / script -->
+    <div class="card">
+      <h3 style="margin:0 0 8px">Run custom command or bash script</h3>
+      <div class="row">
+        <div>
+          <label>Command / Script</label>
+          <textarea id="customScript" placeholder="# Example
+apt-get update -y && apt-get upgrade -y
+# or paste a multiline bash script here"></textarea>
+
+          <div class="actions">
+            <input id="scriptFile" type="file" accept=".sh,.txt,.bash,.zsh,.ksh,.command,text/plain" />
+            <label for="scriptFile" class="btn ghost">Upload file into the box</label>
+            <button class="primary" onclick="runCustom()">Execute on selected</button>
+          </div>
+          <div id="customMsg" class="muted" style="margin-top:6px;color:var(--muted);"></div>
+        </div>
+
+        <div>
+          <label>Choose hosts</label>
+          <div class="host-chooser" id="hostChooser">
+            <label><input type="checkbox" id="chooseAll" onchange="toggleChooseAll(this.checked)" /> <strong>Select all</strong></label>
+            <!-- host checkboxes injected here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hosts -->
+    <div class="card">
+      <h3 style="margin:0 0 8px">Hosts</h3>
+
+      <!-- QUICK FILTERS + SEARCH + SORT -->
+      <div class="filters">
+        <label class="chip" title="Show only hosts that have at least one container path">
+          <input id="flt_withContainers" type="checkbox" />
+          Only hosts with containers
+        </label>
+
+        <div class="inline-field">
+          <label for="flt_search">Search</label>
+          <input id="flt_search" type="text" placeholder="name, IP, or user…" />
+        </div>
+
+        <div class="inline-field">
+          <label for="flt_sort">Sort by</label>
+          <select id="flt_sort">
+            <option value="name_asc">Name (A→Z)</option>
+            <option value="name_desc">Name (Z→A)</option>
+            <option value="ip_asc">IP (A→Z)</option>
+            <option value="ip_desc">IP (Z→A)</option>
+            <option value="user_asc">User (A→Z)</option>
+            <option value="user_desc">User (Z→A)</option>
+            <option value="port_asc">Port (lowest)</option>
+            <option value="port_desc">Port (highest)</option>
+            <option value="paths_desc">Paths count (high→low)</option>
+            <option value="paths_asc">Paths count (low→high)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="hostsTbl">
+          <thead>
+            <tr>
+              <th>Name</th><th>IP</th><th>User</th><th>Port</th><th>Root?</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Logs Modal -->
+  <div id="logModal" class="modal-backdrop" onclick="if(event.target.id==='logModal') closeLogs()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
+      <header>
+        <h3 id="logModalTitle">Execution Logs</h3>
+        <button class="close-btn" onclick="closeLogs()">Close</button>
+      </header>
+      <div class="content" id="logModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Add User modal -->
+  <div id="addUserModal" class="modal-backdrop modal-mini" onclick="backdropClose(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addUserTitle">
+      <header>
+        <h3 id="addUserTitle">Add User</h3>
+        <button class="close-btn" onclick="closeAddUser()">Close</button>
+      </header>
+      <div class="content">
+        <div class="row">
+          <div>
+            <label>Username</label>
+            <input id="newUser" type="text" placeholder="new username" />
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="newPass" type="password" placeholder="set password" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="ghost" onclick="closeAddUser()">Cancel</button>
+          <button class="primary" onclick="createUser()">Create</button>
+        </div>
+        <div id="addUserMsg" style="margin-top:8px;color:var(--text);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Host modal -->
+  <div id="editHostModal" class="modal-backdrop modal-mini" onclick="if(event.target===this) closeEditHost()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editHostTitle">
+      <header>
+        <h3 id="editHostTitle">Edit Host</h3>
+        <button class="close-btn" onclick="closeEditHost()">Close</button>
+      </header>
+      <div class="content">
+        <input type="hidden" id="edit_id" />
+        <div class="row">
+          <div>
+            <label>Name</label>
+            <input id="edit_name" type="text" />
+          </div>
+          <div>
+            <label>IP / Hostname</label>
+            <input id="edit_ip" type="text" />
+          </div>
+          <div>
+            <label>SSH User</label>
+            <input id="edit_user" type="text" />
+          </div>
+          <div>
+            <label>Password <small class="small">(leave blank to keep existing)</small></label>
+            <input id="edit_password" type="password" placeholder="********" />
+          </div>
+          <div>
+            <label>Port</label>
+            <input id="edit_port" type="number" value="22" />
+          </div>
+          <div>
+            <label>Is Root User?</label>
+            <input id="edit_isRoot" type="checkbox" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Has Docker containers?</label>
+            <input id="edit_hasContainers" type="checkbox" />
+          </div>
+          <div id="edit_containers_group" class="hidden">
+            <label>Container path(s) on host <small>(one per line)</small></label>
+            <textarea id="edit_containerPaths" placeholder="/root/app1
+/root/app2" disabled></textarea>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:10px;">
+          <button class="ghost" onclick="closeEditHost()">Cancel</button>
+          <button class="primary" onclick="saveEditHost()">Save</button>
+        </div>
+        <div id="editHostMsg" style="margin-top:8px;color:var(--text);"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Dark Mode (persisted) ----------
+    const darkToggle = document.getElementById('darkToggle');
+    const savedTheme = localStorage.getItem('sshupdater_theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.body.classList.add('dark');
+      darkToggle.checked = true;
+    }
+    darkToggle.addEventListener('change', () => {
+      document.body.classList.toggle('dark', darkToggle.checked);
+      localStorage.setItem('sshupdater_theme', darkToggle.checked ? 'dark' : 'light');
+    });
+
+    // ---------- State ----------
+    let hostsCache = new Map();
+
+    // Filters / search / sort state
+    const fltWith = document.getElementById('flt_withContainers');
+    const fltSearch = document.getElementById('flt_search');
+    const fltSort = document.getElementById('flt_sort');
+
+    fltWith.addEventListener('change', renderTableFromCache);
+    fltSort.addEventListener('change', renderTableFromCache);
+    fltSearch.addEventListener('input', debounce(renderTableFromCache, 120));
+
+    function updateStatusBarFromData(data){
+      const total = data.length;
+      const withC = data.filter(h => h.hasContainers && Array.isArray(h.containerPaths) && h.containerPaths.length > 0).length;
+      const paths = data.reduce((acc,h)=> acc + (Array.isArray(h.containerPaths)? h.containerPaths.length : 0), 0);
+      document.getElementById('stat_total').textContent = total;
+      document.getElementById('stat_with').textContent  = withC;
+      document.getElementById('stat_paths').textContent = paths;
+    }
+
+    async function refresh(force = false) {
+      try {
+        const url = '/api/hosts' + (force ? `?t=${Date.now()}` : '');
+        const r = await fetch(url, { credentials: 'include', cache: 'no-store' });
+        const ct = (r.headers.get('content-type') || '');
+        if (!r.ok || !ct.includes('application/json')) throw new Error('Unexpected response');
+        const data = await r.json();
+
+        hostsCache = new Map(data.map(h => [h._id, h]));
+        updateStatusBarFromData(data);
+
+        renderTableFromCache();
+        renderChooserFromData(data);
+      } catch (e) {
+        console.error('refresh failed; forcing full reload', e);
+        setTimeout(() => location.reload(), 150);
+      }
+    }
+
+    function renderTableFromCache(){
+      const tbody = document.querySelector('#hostsTbl tbody');
+      tbody.innerHTML = '';
+
+      const onlyWith = fltWith.checked;
+      const q = (fltSearch.value || '').trim().toLowerCase();
+
+      // to array
+      let list = Array.from(hostsCache.values()).map(h => ({
+        ...h,
+        pathsCount: Array.isArray(h.containerPaths) ? h.containerPaths.length : 0,
+        hasAny: h.hasContainers && Array.isArray(h.containerPaths) && h.containerPaths.length > 0,
+      }));
+
+      // filter by withContainers
+      if (onlyWith) list = list.filter(h => h.hasAny);
+
+      // search (name/IP/user)
+      if (q) {
+        list = list.filter(h =>
+          (h.name||'').toLowerCase().includes(q) ||
+          (h.ip||'').toLowerCase().includes(q) ||
+          (h.user||'').toLowerCase().includes(q)
+        );
+      }
+
+      // sort
+      const sortVal = fltSort.value;
+      const cmp = (a, b) => {
+        const s = (x='') => String(x).toLowerCase();
+        switch (sortVal) {
+          case 'name_asc':  return s(a.name).localeCompare(s(b.name));
+          case 'name_desc': return s(b.name).localeCompare(s(a.name));
+          case 'ip_asc':    return s(a.ip).localeCompare(s(b.ip));
+          case 'ip_desc':   return s(b.ip).localeCompare(s(a.ip));
+          case 'user_asc':  return s(a.user).localeCompare(s(b.user));
+          case 'user_desc': return s(b.user).localeCompare(s(a.user));
+          case 'port_asc':  return (a.port||0) - (b.port||0);
+          case 'port_desc': return (b.port||0) - (a.port||0);
+          case 'paths_asc': return a.pathsCount - b.pathsCount;
+          case 'paths_desc':return b.pathsCount - a.pathsCount;
+          default:          return s(a.name).localeCompare(s(b.name));
+        }
+      };
+      list.sort(cmp);
+
+      // render
+      list.forEach(h => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="namecell">
+              ${escapeHtml(h.name)}
+              <span class="badge" title="${h.pathsCount} container path${h.pathsCount===1?'':'s'}">${h.pathsCount}</span>
+            </div>
+          </td>
+          <td>${h.ip}</td>
+          <td>${h.user}</td>
+          <td>${h.port}</td>
+          <td>${h.isRoot ? 'yes' : 'no'}</td>
+          <td style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="primary" onclick="runHost('${h._id}')">Run</button>
+            <button class="secondary" onclick="openEditHost('${h._id}')">Edit</button>
+            <button class="ghost" onclick="removeHost('${h._id}')">Delete</button>
+            ${
+              h.hasAny
+                ? `<button class="secondary" onclick="runContainersHost('${h._id}')">Update containers</button>`
+                : `<button class="secondary" disabled title="No container paths set">Update containers</button>`
+            }
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderChooserFromData(data){
+      const chooser = document.getElementById('hostChooser');
+      chooser.querySelectorAll('label[data-dyn]').forEach(el => el.remove());
+      data.forEach(h => {
+        const row = document.createElement('label');
+        row.setAttribute('data-dyn','1');
+        const pathsCount = Array.isArray(h.containerPaths) ? h.containerPaths.length : 0;
+        row.innerHTML = `<input type="checkbox" data-host value="${h._id}" /> ${escapeHtml(h.name)}
+          <span class="muted">(${escapeHtml(h.ip)})</span>
+          ${pathsCount>0?`<span class="badge" title="${pathsCount} path${pathsCount===1?'':'s'}">${pathsCount}</span>`:''}`;
+        chooser.appendChild(row);
+      });
+    }
+
+    // track actions after closing log modal
+    let refreshOnLogClose = false;
+    let resetCustomOnClose = false;
+
+    // ---------- Logs modal ----------
+    function openLogs(title, html, refreshAfterClose = false, resetCustom = false) {
+      refreshOnLogClose = !!refreshAfterClose;
+      resetCustomOnClose = !!resetCustom;
+      document.getElementById('logModalTitle').textContent = title || 'Execution Logs';
+      document.getElementById('logModalContent').innerHTML = html || '';
+      document.getElementById('logModal').style.display = 'flex';
+    }
+    let currentES = null;
+    function ensureLogModal(title) {
+      document.getElementById('logModalTitle').textContent = title || 'Execution Logs';
+      document.getElementById('logModalContent').innerHTML = '';
+      document.getElementById('logModal').style.display = 'flex';
+    }
+    function cssKey(s) { return String(s || '').replace(/[^a-zA-Z0-9_.-]/g, '_'); }
+    function appendHostBlockIfMissing(key, name, ip) {
+      const c = document.getElementById('logModalContent');
+      if (document.getElementById(`hb-${key}`)) return;
+      const block = document.createElement('div');
+      block.className = 'host-block';
+      block.id = `hb-${key}`;
+      block.innerHTML = `
+        <div class="host-head">
+          <div class="host-title">${escapeHtml(name)} <span class="small">(${escapeHtml(ip||'')})</span></div>
+          <span class="pill" id="pill-${key}">RUNNING</span>
+        </div>
+        <div class="host-body">
+          <div class="small" style="margin-bottom:6px;" id="meta-${key}">starting...</div>
+          <pre class="mono" id="pre-${key}"></pre>
+        </div>`;
+      c.appendChild(block);
+    }
+    function appendLog(key, chunk) {
+      const pre = document.getElementById(`pre-${key}`);
+      if (!pre) return;
+      pre.textContent += chunk;
+      pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+    }
+    function setHostEnd(key, ok, ms, code, err) {
+      const pill = document.getElementById(`pill-${key}`);
+      const meta = document.getElementById(`meta-${key}`);
+      if (pill) { pill.className = `pill ${ok ? 'ok' : 'fail'}`; pill.textContent = ok ? 'OK' : 'FAIL'; }
+      if (meta) meta.textContent = `exitCode=${code ?? 'n/a'} • time=${ms ?? 0}ms${err ? ' • '+err : ''}`;
+    }
+    const _closeLogsBase = function() {
+      document.getElementById('logModal').style.display = 'none';
+      document.getElementById('logModalContent').innerHTML = '';
+      if (resetCustomOnClose) { resetCustomOnClose = false; resetCustomForm(); }
+      if (refreshOnLogClose) { refreshOnLogClose = false; refresh(true); }
+    };
+    function closeLogs() { if (currentES) { try { currentES.close(); } catch(_){} currentES = null; } _closeLogsBase(); }
+
+    // ---------- Auth ----------
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      location.href = '/login.html';
+    }
+    function openAddUser() {
+      document.getElementById('addUserModal').style.display = 'flex';
+      document.getElementById('addUserMsg').textContent = '';
+      document.getElementById('newUser').focus();
+    }
+    function closeAddUser() { document.getElementById('addUserModal').style.display = 'none'; }
+    function backdropClose(e) { if (e.target.id === 'addUserModal') closeAddUser(); }
+    async function createUser() {
+      const username = document.getElementById('newUser').value.trim();
+      const password = document.getElementById('newPass').value;
+      if (!username || !password) { document.getElementById('addUserMsg').textContent = 'Username and password are required.'; return; }
+      const r = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ username, password }) });
+      const data = await r.json();
+      if (data.ok) { document.getElementById('addUserMsg').textContent = 'User created.'; setTimeout(closeAddUser, 700); }
+      else { document.getElementById('addUserMsg').textContent = data.error || 'Failed to create user.'; }
+    }
+
+    // ---------- APT (SSE) ----------
+    async function runHost(id) {
+      ensureLogModal('Execution Logs (streaming)…');
+      if (currentES) currentES.close();
+      currentES = new EventSource(`/api/stream/run/${encodeURIComponent(id)}`);
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
+    }
+    async function runAll() {
+      if (!confirm('Run update/upgrade on ALL hosts?')) return;
+      ensureLogModal('Executing on all hosts (streaming)…');
+      if (currentES) currentES.close();
+      currentES = new EventSource('/api/stream/runAll');
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
+    }
+
+    // ---------- Containers (SSE) ----------
+    async function runContainersAll() {
+      ensureLogModal('Updating containers on all hosts (streaming)…');
+      if (currentES) currentES.close();
+      currentES = new EventSource('/api/stream/runContainersAll');
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
+    }
+    async function runContainersHost(id) {
+      ensureLogModal('Update containers (streaming)…');
+      if (currentES) currentES.close();
+      currentES = new EventSource(`/api/stream/runContainers/${encodeURIComponent(id)}`);
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
+    }
+
+    // ---------- Custom script (streaming) ----------
+    document.getElementById('scriptFile').addEventListener('change', (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById('customScript').value = reader.result; };
+      reader.readAsText(f);
+    });
+    function toggleChooseAll(checked) { document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = checked); }
+    function utf8ToB64(str) { return btoa(unescape(encodeURIComponent(str))); }
+    function resetCustomForm() {
+      document.getElementById('customScript').value = '';
+      document.getElementById('scriptFile').value = '';
+      document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = false);
+      const all = document.getElementById('chooseAll'); if (all) all.checked = false;
+    }
+    async function runCustom() {
+      const script = document.getElementById('customScript').value;
+      const ids = Array.from(document.querySelectorAll('#hostChooser input[type=checkbox][data-host]:checked')).map(cb => cb.value);
+      
+      if (!script.trim()) { 
+        document.getElementById('customMsg').textContent = 'Please paste a command or script.'; 
+        return; 
+      }
+      if (ids.length === 0) { 
+        document.getElementById('customMsg').textContent = 'Select at least one host.'; 
+        return; 
+      }
+      
+      document.getElementById('customMsg').textContent = 'Starting execution...';
+      
+      const b64 = utf8ToB64(script);
+      if (b64.length > 280000) { 
+        document.getElementById('customMsg').textContent = 'Script too large (max ~200 KB).'; 
+        return; 
+      }
+      
+      try {
+        // Show logs modal immediately
+        ensureLogModal(`Executing custom script on ${ids.length} host(s)`);
+        
+        // Start the job via streaming endpoint
+        const r = await fetch('/api/runCustomStream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ hostIds: ids, scriptB64: b64 })
+        });
+        
+        const data = await r.json();
+        if (!data.ok) {
+          closeLogs();
+          document.getElementById('customMsg').textContent = data.error || 'Failed to start execution';
+          return;
+        }
+        
+        // Connect to the SSE stream for this job
+        const jobId = data.jobId;
+        if (currentES) currentES.close();
+        
+        currentES = new EventSource(`/api/stream/runCustom?job=${encodeURIComponent(jobId)}`);
+        currentES.addEventListener('hostStart', (e) => { 
+          const d = JSON.parse(e.data); 
+          const key = cssKey(d.ip || d.host); 
+          appendHostBlockIfMissing(key, d.host || 'host', d.ip); 
+        });
+        currentES.addEventListener('log', (e) => { 
+          const d = JSON.parse(e.data); 
+          const key = cssKey(d.ip || d.host); 
+          appendLog(key, d.chunk); 
+        });
+        currentES.addEventListener('hostEnd', (e) => { 
+          const d = JSON.parse(e.data); 
+          const key = cssKey(d.ip || d.host); 
+          setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); 
+        });
+        currentES.addEventListener('done', () => { 
+          if (currentES) { 
+            currentES.close(); 
+            currentES = null; 
+          }
+          refreshOnLogClose = true;
+          resetCustomOnClose = true;
+        });
+        
+        document.getElementById('customMsg').textContent = '';
+        
+      } catch (e) {
+        console.error('runCustom failed:', e);
+        document.getElementById('customMsg').textContent = 'Failed to start execution: ' + e.message;
+        closeLogs();
+      }
+    }
+
+    // ---------- Edit Host ----------
+    function openEditHost(id) {
+      const h = hostsCache.get(id);
+      if (!h) return;
+      document.getElementById('edit_id').value = h._id;
+      document.getElementById('edit_name').value = h.name || '';
+      document.getElementById('edit_ip').value = h.ip || '';
+      document.getElementById('edit_user').value = h.user || '';
+      document.getElementById('edit_password').value = '';
+      document.getElementById('edit_port').value = h.port || 22;
+      document.getElementById('edit_isRoot').checked = !!h.isRoot;
+
+      const hasC = !!h.hasContainers;
+      const editHas = document.getElementById('edit_hasContainers');
+      const editGroup = document.getElementById('edit_containers_group');
+      const editPaths = document.getElementById('edit_containerPaths');
+      editHas.checked = hasC;
+      editGroup.classList.toggle('hidden', !hasC);
+      editPaths.disabled = !hasC;
+      editPaths.value = (Array.isArray(h.containerPaths) ? h.containerPaths.join('\n') : '');
+
+      document.getElementById('editHostMsg').textContent = '';
+      document.getElementById('editHostModal').style.display = 'flex';
+      document.getElementById('edit_name').focus();
+    }
+    function closeEditHost() { document.getElementById('editHostModal').style.display = 'none'; }
+    async function saveEditHost() {
+      const id = document.getElementById('edit_id').value;
+      const hasC = document.getElementById('edit_hasContainers').checked;
+      const payload = {
+        name: document.getElementById('edit_name').value.trim(),
+        ip: document.getElementById('edit_ip').value.trim(),
+        user: document.getElementById('edit_user').value.trim(),
+        port: Number(document.getElementById('edit_port').value) || 22,
+        isRoot: document.getElementById('edit_isRoot').checked,
+        hasContainers: hasC,
+        containerPaths: hasC
+          ? document.getElementById('edit_containerPaths').value.split('\n').map(s => s.replace(/\r/g,'').trim()).filter(Boolean)
+          : []
+      };
+      const pwd = document.getElementById('edit_password').value;
+      if (pwd) payload.password = pwd;
+      try {
+        const r = await fetch('/api/hosts/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+        const data = await r.json();
+        if (r.ok && data && !data.error) { closeEditHost(); await refresh(true); }
+        else { document.getElementById('editHostMsg').textContent = data.error || 'Failed to update host'; }
+      } catch (e) { document.getElementById('editHostMsg').textContent = 'Network error: ' + e.message; }
+    }
+
+    // Toggle container fields live
+    document.addEventListener('change', (e) => {
+      if (e.target && e.target.id === 'edit_hasContainers') {
+        const on = e.target.checked;
+        document.getElementById('edit_containers_group').classList.toggle('hidden', !on);
+        document.getElementById('edit_containerPaths').disabled = !on;
+      }
+      if (e.target && e.target.id === 'hasContainers') {
+        const on = e.target.checked;
+        document.getElementById('add_containers_group').classList.toggle('hidden', !on);
+        document.getElementById('containerPaths').disabled = !on;
+      }
+    });
+
+    // ---------- Hosts CRUD ----------
+    function clearHostForm() {
+      document.getElementById('name').value = '';
+      document.getElementById('ip').value = '';
+      document.getElementById('user').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('port').value = '22';
+      document.getElementById('isRoot').checked = false;
+      document.getElementById('hasContainers').checked = false;
+      document.getElementById('add_containers_group').classList.add('hidden');
+      document.getElementById('containerPaths').disabled = true;
+      document.getElementById('containerPaths').value = '';
+      document.getElementById('name').focus();
+    }
+    async function addHost() {
+      const addBtn = document.querySelector('button.primary[onclick="addHost()"]');
+      addBtn.disabled = true;
+      try {
+        const hasC = document.getElementById('hasContainers').checked;
+        const body = {
+          name: document.getElementById('name').value.trim(),
+          ip: document.getElementById('ip').value.trim(),
+          user: document.getElementById('user').value.trim(),
+          password: document.getElementById('password').value,
+          port: Number(document.getElementById('port').value) || 22,
+          isRoot: document.getElementById('isRoot').checked,
+          hasContainers: hasC,
+          containerPaths: hasC
+            ? document.getElementById('containerPaths').value.split('\n').map(s => s.replace(/\r/g,'').trim()).filter(Boolean)
+            : []
+        };
+        const r = await fetch('/api/hosts', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+        const data = await r.json();
+        const msg = document.getElementById('addMsg');
+        if (r.ok && data && !data.error) {
+          msg.textContent = 'Host saved.'; clearHostForm(); await refresh(true); setTimeout(() => { msg.textContent = ''; }, 2000);
+        } else { msg.textContent = (data && data.error) ? ('Error: ' + data.error) : 'Error saving host'; }
+      } catch (e) { document.getElementById('addMsg').textContent = 'Network error: ' + e.message; }
+      finally { addBtn.disabled = false; }
+    }
+    async function removeHost(id) { if (!confirm('Delete this host?')) return; await fetch('/api/hosts/' + id, { method: 'DELETE', credentials:'include' }); refresh(true); }
+
+    function hostBlock(name, ip, ok, ms, code, log) {
+      const pill = `<span class="pill ${ok ? 'ok' : 'fail'}">${ok ? 'OK' : 'FAIL'}</span>`;
+      const meta = `exitCode=${code ?? 'n/a'} • time=${ms}ms`;
+      return `<div class="host-block">
+        <div class="host-head"><div class="host-title">${escapeHtml(name)} <span class="small">(${escapeHtml(ip||'')})</span></div>${pill}</div>
+        <div class="host-body"><div class="small" style="margin-bottom:6px;">${escapeHtml(meta)}</div><pre class="mono">${escapeHtml(log||'')}</pre></div>
+      </div>`;
+    }
+
+    // Initial toggles & load
+    function initContainersToggle() {
+      const on = document.getElementById('hasContainers').checked;
+      document.getElementById('add_containers_group').classList.toggle('hidden', !on);
+      document.getElementById('containerPaths').disabled = !on;
+    }
+    refresh();
+    initContainersToggle();
+
+    // Utils
+    function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+  </script>
+</body>
+</html>
