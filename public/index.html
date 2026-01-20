@@ -9,6 +9,7 @@
     /* ---------- THEME (CSS variables) ---------- */
     :root{
       --bg: #f5f7fb;
+      --bg2: #eef2ff;
       --text: #1e2430;
       --muted: #6b7280;
       --card: #ffffff;
@@ -28,97 +29,248 @@
       --shadow: 0 4px 16px rgba(0,0,0,.06);
       --chip-bg: #eef2ff;
       --input-bg: #fff;
+      --radius: 14px;
+      --radius-lg: 18px;
     }
+
     body.dark{
-      --bg: #0e1116;
+      --bg: #0b1020;
+      --bg2: #070b14;
       --text: #e6e8ee;
       --muted: #98a2b3;
-      --card: #151a22;
-      --card-border: #222a36;
-      --header: #0b1220;
+      --card: rgba(21, 26, 34, 0.92);
+      --card-border: rgba(255,255,255,.08);
+      --header: rgba(11, 18, 32, 0.85);
       --brand-on: #ffffff;
       --primary: #4f83ff;
-      --primary-ghost: #0f1d33;
+      --primary-ghost: rgba(79,131,255,.14);
       --danger: #ff5c6c;
-      --pill-ok-bg: #0f2a1b;
+      --pill-ok-bg: rgba(78, 209, 156, 0.14);
       --pill-ok-fg: #4ed19c;
-      --pill-fail-bg: #2a1214;
+      --pill-fail-bg: rgba(255, 92, 108, 0.14);
       --pill-fail-fg: #ff8b96;
-      --code-bg: #0b1220;
+      --code-bg: rgba(11, 18, 32, 0.88);
       --code-fg: #e6edf3;
-      --table-head: #101825;
-      --shadow: 0 6px 24px rgba(0,0,0,.35);
-      --chip-bg: #182238;
-      --input-bg: #0f1623;
+      --table-head: rgba(16, 24, 37, 0.9);
+      --shadow: 0 14px 40px rgba(0,0,0,.38);
+      --chip-bg: rgba(24, 34, 56, 0.85);
+      --input-bg: rgba(15, 22, 35, 0.9);
     }
 
     /* ---------- BASE ---------- */
     *{box-sizing:border-box}
-    body { font-family: system-ui, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    html, body { height:100%; }
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      margin: 0;
+      background: radial-gradient(1200px 600px at 60% -10%, rgba(79,131,255,.18), transparent 60%),
+                  radial-gradient(900px 500px at 10% 10%, rgba(78,209,156,.10), transparent 55%),
+                  linear-gradient(180deg, var(--bg), var(--bg2));
+      color: var(--text);
+    }
     .hidden { display:none !important; }
 
-    /* Header */
-    header { background:var(--header); color:var(--brand-on); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
-    .brand { display:flex; align-items:center; gap:10px; }
-    .logo-badge { display:inline-flex; align-items:center; justify-content:center; height:32px; width:32px; border-radius:8px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); overflow:hidden; }
-    .logo-badge img { display:block; height:28px; width:28px; object-fit:contain; }
-    .brand strong { font-size:1.1rem; font-weight:700; }
-    .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    /* ---------- APP SHELL ---------- */
+    .app-shell{
+      height:100%;
+      display:grid;
+      grid-template-columns: 260px 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      background: var(--header);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+      min-height: 0;
+    }
+    .side-brand{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 8px 10px;
+      color: var(--brand-on);
+    }
+    .logo-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height:36px;
+      width:36px;
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.2);
+      overflow:hidden;
+    }
+    .logo-badge img{ display:block; height:30px; width:30px; object-fit:contain; }
+    .side-brand strong{ font-size: 1.05rem; font-weight: 800; letter-spacing: .01em; }
+
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      padding: 4px;
+      overflow:auto;
+      min-height: 0;
+    }
+    .nav-btn{
+      width: 100%;
+      text-align:left;
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--brand-on);
+      cursor:pointer;
+      font-weight: 700;
+    }
+    .nav-btn:hover{ background: rgba(255,255,255,.10); }
+    .nav-btn.active{
+      background: rgba(79,131,255,.24);
+      border-color: rgba(79,131,255,.55);
+      box-shadow: 0 10px 26px rgba(0,0,0,.18);
+    }
+
+    /* Content area */
+    .content{
+      min-width: 0;
+      min-height: 0;
+      background: rgba(11, 18, 32, 0.0);
+      border-radius: var(--radius-lg);
+    }
+
+    .page-head{
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+    .page-title{ margin: 2px 0 4px; font-size: 1.25rem; font-weight: 800; }
+    .page-sub{ margin: 0; color: var(--muted); font-size: 13px; }
+
+    .top-actions{ display:flex; gap: 8px; align-items:center; flex-wrap:wrap; }
 
     /* Dark toggle */
-    .toggle{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:999px; cursor:pointer; user-select:none;}
+    .toggle{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--card-border); border-radius:999px; cursor:pointer; user-select:none; background: rgba(255,255,255,.04);} 
     .toggle input{appearance:none; width:28px; height:16px; background:#cbd5e1; border-radius:999px; position:relative; outline:none;}
     .toggle input:after{content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .2s ease;}
     .toggle input:checked{background:#60a5fa;}
-    .toggle input:checked:after{transform:translateX(12px);}
+    .toggle input:checked:after{transform:translateX(12px);}    
 
-    /* Main & cards */
-    main { max-width:1100px; margin:20px auto; padding:0 16px; }
-    .card { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:16px; box-shadow:var(--shadow); margin-bottom:16px; }
-    label { display:block; font-weight:600; margin-top:8px; }
+    /* Cards & inputs (kept) */
+    .card {
+      background:var(--card);
+      border:1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding:16px;
+      box-shadow:var(--shadow);
+      margin: 0 0 16px;
+    }
+
+    label { display:block; font-weight:700; margin-top:10px; margin-bottom:6px; }
     input[type=text], input[type=password], input[type=number], textarea, select {
-      width:100%; max-width:100%; padding:10px; border:1px solid var(--card-border); border-radius:8px; background:var(--input-bg); color:var(--text);
+      width:100%; max-width:100%; padding:10px; border:1px solid var(--card-border);
+      border-radius:10px; background:var(--input-bg); color:var(--text);
     }
     textarea { min-height:100px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
     .row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:24px; row-gap:12px; align-items:start; }
     .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
-    button { border:0; border-radius:8px; padding:10px 14px; cursor:pointer; font-weight:700; }
+
+    /* Button-like labels (used for file inputs) */
+    .btn{ display:inline-flex; align-items:center; justify-content:center; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:800; user-select:none; border:1px solid transparent; }
+    .btn.ghost{ background:transparent; border-color: var(--card-border); color: var(--text); }
+    .btn.secondary{ background:var(--primary-ghost); color:var(--text); border:1px solid var(--card-border); }
+    .btn.primary{ background:var(--primary); color:#fff; }
+
+    /* Tools view: make the host chooser narrower so the action buttons fit in a single row */
+    .tools-grid{ grid-template-columns: minmax(0,1fr) 300px; }
+    .tools-actions{ flex-wrap:nowrap; gap:10px; }
+    .tools-actions button,
+    .tools-actions .btn{ padding:9px 12px; font-size:13px; white-space:nowrap; }
+    .tools-grid .host-chooser{ max-height: 190px; }
+
+    @media (max-width: 980px){
+      .tools-grid{ grid-template-columns: 1fr; }
+      .tools-actions{ flex-wrap:wrap; }
+    }
+
+    button { border:0; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:800; }
     .primary { background:var(--primary); color:#fff; }
-    .danger { background:var(--danger); color:#fff; }
+    /*
+      Unify "danger" buttons with the primary accent as requested.
+      This keeps the UI consistent with the "Add" button styling.
+    */
+    .danger { background:var(--primary); color:#fff; }
     .ghost { background:transparent; border:1px solid var(--card-border); color:var(--text); }
     .secondary { background:var(--primary-ghost); color:var(--text); border:1px solid var(--card-border); }
     .secondary:hover { filter:brightness(1.05); }
 
+    /* Header metrics */
+    .metrics{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .metric{
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .metric .n{ font-weight:900; font-size: 22px; }
+    .metric .l{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+
     /* Table + wrapper for mobile scroll */
-    .table-wrap { overflow:auto; -webkit-overflow-scrolling:touch; border-radius:12px; background:var(--card); border:1px solid var(--card-border); }
+    .table-wrap { overflow:auto; -webkit-overflow-scrolling:touch; border-radius: var(--radius-lg); background:var(--card); border:1px solid var(--card-border); }
     table { width:100%; border-collapse:collapse; min-width:720px; }
     th, td { text-align:left; padding:10px; border-bottom:1px solid var(--card-border); font-size:14px; vertical-align: top; }
     th { background:var(--table-head); position:sticky; top:0; z-index:1; }
 
     code { background:rgba(99,102,241,.12); padding:2px 6px; border-radius:4px; }
-    .mono { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre-wrap; max-height:250px; overflow:auto; background:var(--code-bg); color:var(--code-fg); border-radius:8px; padding:12px; }
+    .mono { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre-wrap; max-height:250px; overflow:auto; background:var(--code-bg); color:var(--code-fg); border-radius:12px; padding:12px; }
 
     /* Upload label styled like a button */
-    .btn{ display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; height:36px; border-radius:8px; font-weight:700; cursor:pointer; line-height:1; box-sizing:border-box; }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; height:36px; border-radius:10px; font-weight:800; cursor:pointer; line-height:1; box-sizing:border-box; }
     .btn.ghost{ background:transparent; border:1px solid var(--card-border); color:var(--text); }
     .btn.ghost:hover{ filter:brightness(1.06); }
-    label.btn{ margin:0; font-weight:700; display:inline-flex !important; }
+    label.btn{ margin:0; font-weight:800; display:inline-flex !important; }
     #scriptFile{ display:none; }
+    #fileUpload{ display:none; }
 
     /* Modal (Logs) */
     .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
-    .modal { width:min(1100px, 100%); max-height:85vh; overflow:auto; background:var(--card); border:1px solid var(--card-border); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
-    .modal header { position:sticky; top:0; background:var(--header); color:#fff; border-radius:14px 14px 0 0; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .modal { width:min(1100px, 100%); max-height:85vh; overflow:auto; background:var(--card); border:1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .modal header { position:sticky; top:0; background:var(--header); color:#fff; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; }
     .modal header h3 { margin:0; font-size:1rem; }
     .modal .content { padding:14px; }
-    .close-btn { background:transparent; border:1px solid rgba(255,255,255,0.6); color:#fff; border-radius:8px; padding:6px 10px; font-weight:700; cursor:pointer; }
+    .close-btn { background:transparent; border:1px solid rgba(255,255,255,0.6); color:#fff; border-radius:10px; padding:6px 10px; font-weight:800; cursor:pointer; }
     .close-btn:hover { background:rgba(255,255,255,0.16); }
 
     /* Host result blocks inside modal */
-    .host-block { background:var(--bg); border:1px solid var(--card-border); border-radius:10px; margin:10px 0; }
+    .host-block { background:rgba(255,255,255,.04); border:1px solid var(--card-border); border-radius:12px; margin:10px 0; }
     .host-head { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--card-border); flex-wrap:wrap; gap:8px; }
-    .host-title { font-weight:700; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .host-title { font-weight:800; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:900; }
     .ok { background:var(--pill-ok-bg); color:var(--pill-ok-fg); }
     .fail { background:var(--pill-fail-bg); color:var(--pill-fail-fg); }
     .small { opacity:.8; font-size:12px; margin-left:8px; }
@@ -126,228 +278,387 @@
     .host-body .mono { max-height:none; }
 
     /* Small modal (Add user / Edit host) */
-    .modal-mini .modal { width:min(620px, 100%); max-height:85vh; }
+    .modal-mini .modal { width:min(680px, 100%); max-height:85vh; }
     .modal-mini .modal .row { grid-template-columns: 1fr; }
     .modal-mini .modal .actions { justify-content:flex-end; }
 
     /* Host chooser list */
-    .host-chooser { max-height: 220px; overflow:auto; border:1px solid var(--card-border); border-radius:8px; padding:8px; background:var(--bg); }
-    .host-chooser label { display:flex; align-items:center; gap:8px; margin:6px 0; font-weight:500; }
+    .host-chooser { max-height: 240px; overflow:auto; border:1px solid var(--card-border); border-radius:12px; padding:10px; background:rgba(255,255,255,.04); }
+    .host-chooser label { display:flex; align-items:center; gap:8px; margin:6px 0; font-weight:600; }
     .host-chooser .muted { color:var(--muted); font-size:12px; }
 
-    /* Status bar */
-    .statusbar{ display:flex; gap:10px; flex-wrap:wrap; }
-    .stat{ background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow); }
-    .stat .n{ font-weight:800; font-size:18px; }
-    .stat .l{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    /* Tools view layout: keep buttons on one line and make chooser narrower */
+    .tools-grid{ grid-template-columns: minmax(0, 1fr) 300px; }
+    .tools-actions{ flex-wrap: nowrap; }
+    .tools-actions button, .tools-actions .btn{ padding:9px 12px; font-size:13px; white-space:nowrap; }
+    .tools-actions{ overflow-x:auto; padding-bottom:2px; }
+    .tools-grid .host-chooser{ max-height: 170px; }
 
     /* Quick filters / search / sort */
     .filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin: 8px 0 12px; }
-    .chip { background:var(--chip-bg); border:1px solid var(--card-border); padding:6px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; font-weight:600; }
+    .chip { background:var(--chip-bg); border:1px solid var(--card-border); padding:6px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; font-weight:700; }
     .chip input{ transform: translateY(1px); }
     .inline-field { display:flex; align-items:center; gap:8px; }
-    .inline-field label { margin:0; font-weight:700; font-size:13px; color:var(--muted); }
+    .inline-field label { margin:0; font-weight:900; font-size:13px; color:var(--muted); }
     .inline-field input[type="text"] { width:220px; }
     .inline-field select { width:220px; }
 
-    /* Tiny badge for path count */
-    .badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 6px; border-radius:9px; background:var(--primary-ghost); border:1px solid var(--card-border); font-size:12px; font-weight:800; margin-left:6px; }
+    .badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 6px; border-radius:9px; background:var(--primary-ghost); border:1px solid var(--card-border); font-size:12px; font-weight:900; margin-left:6px; }
     .namecell { display:flex; align-items:center; gap:6px; }
 
-    @media (max-width:900px) { .row { grid-template-columns:1fr; } }
-    @media (max-width:600px){
+    /* Views */
+    .views{ margin-top: 14px; }
+    .view{ display:none; }
+    .view.active{ display:block; }
+
+    @media (max-width: 980px){
+      .app-shell{ grid-template-columns: 1fr; }
+      .sidebar{ position:sticky; top: 10px; }
+      .row{ grid-template-columns:1fr; }
+      .metrics{ grid-template-columns: 1fr; }
       .inline-field input[type="text"], .inline-field select { width:100%; }
+    }
+
+    @media (max-width:600px){
       .modal-backdrop { padding:0; }
       .modal { width:100vw; height:100vh; max-height:none; border-radius:0; }
       .modal header { border-radius:0; }
       .modal .content { height: calc(100vh - 56px); overflow:auto; }
     }
+  
+
+    /* ---------- MOBILE / SMALL SCREEN OPTIMIZATIONS ---------- */
+    .mobile-only{ display:none; }
+    .side-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      z-index:1100;
+    }
+
+    /* Responsive "card" tables (hosts/users) */
+    @media (max-width: 720px){
+      .table-wrap{ overflow:visible; background:transparent; border:0; }
+      table{ min-width:0 !important; }
+      table thead{ display:none; }
+      table tbody, table tr, table td{ display:block; width:100%; }
+      table tbody tr{
+        margin: 10px 0;
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        overflow:hidden;
+      }
+      table tbody td{
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--card-border);
+      }
+      table tbody td:last-child{ border-bottom:0; }
+      table tbody td::before{
+        content: attr(data-label);
+        font-weight: 900;
+        color: var(--muted);
+        padding-right: 10px;
+        flex: 0 0 auto;
+      }
+      table tbody td[data-label="Select"]{ justify-content:flex-start; }
+      table tbody td[data-label="Select"]::before{ content:""; padding-right:0; }
+      table tbody td[data-label="Actions"]{ flex-direction:column; align-items:stretch; }
+      table tbody td[data-label="Actions"]::before{ margin-bottom: 6px; }
+      table tbody td[data-label="Actions"] button{ width:100%; }
+    }
+
+    @media (max-width: 980px){
+      .app-shell{ display:block; padding:12px; }
+
+      /* Off-canvas sidebar */
+      .mobile-only{ display:inline-flex; }
+      .sidebar{
+        position:fixed;
+        top:12px;
+        bottom:12px;
+        left:12px;
+        width: 260px;
+        max-width: calc(100vw - 24px);
+        transform: translateX(calc(-100% - 24px));
+        transition: transform .18s ease;
+        z-index:1200;
+      }
+      body.sidebar-open .sidebar{ transform: translateX(0); }
+      body.sidebar-open .side-backdrop{ display:block; }
+
+      /* Content should not be hidden under the fixed sidebar */
+      .content{ margin-top: 0; }
+    }
+
+    @media (max-width: 600px){
+      .page-head{ padding: 12px; }
+      .top-actions{ width:100%; justify-content:space-between; }
+
+      /* Stack primary action rows so they remain tappable */
+      .card .actions{ flex-direction:column; align-items:stretch; }
+      .card .actions button,
+      .card .actions .btn{ width:100%; }
+
+      /* Tools action bar: override nowrap behavior */
+      .tools-actions{ flex-wrap:wrap !important; }
+      .tools-actions{ flex-direction:column; align-items:stretch; }
+      .tools-actions button,
+      .tools-actions .btn{ width:100%; }
+
+      /* Make host chooser a bit shorter on phones */
+      .host-chooser{ max-height: 220px; }
+    }
+
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <span class="logo-badge"><img src="/sshupdater.png" alt="SSH Updater logo" onerror="this.onerror=null;this.src='/ssh-updater-logo-134x134.png';" /></span>
-      <strong>SSH Updater</strong>
-    </div>
-    <div class="toolbar">
-      <label class="toggle" title="Toggle dark mode">
-        <span style="font-size:12px;opacity:.9;">Dark</span>
-        <input id="darkToggle" type="checkbox" />
-      </label>
-      <button class="adduser" onclick="openAddUser()">Add User</button>
-      <button class="logout" onclick="logout()">Logout</button>
-    </div>
-  </header>
+  <div class="app-shell">
+    <!-- LEFT NAV -->
+    <aside class="sidebar">
+      <div class="side-brand">
+        <span class="logo-badge"><img src="/sshupdater.png" alt="SSH Updater logo" onerror="this.onerror=null;this.src='/ssh-updater-logo-134x134.png';" /></span>
+        <strong>SSH Updater</strong>
+      </div>
 
-  <main>
-    <!-- STATUS BAR -->
-    <div class="statusbar" style="margin-bottom:12px;">
-      <div class="stat"><div class="n" id="stat_total">0</div><div class="l">Total hosts</div></div>
-      <div class="stat"><div class="n" id="stat_with">0</div><div class="l">With containers</div></div>
-      <div class="stat"><div class="n" id="stat_paths">0</div><div class="l">Container paths</div></div>
-    </div>
+      <nav class="nav" aria-label="Primary">
+        <button class="nav-btn" id="nav_addHost" data-view="addHost">Add Host</button>
+        <button class="nav-btn" id="nav_tools" data-view="tools">Commands & File upload</button>
+        <button class="nav-btn" id="nav_hosts" data-view="hosts">Hosts</button>
+        <button class="nav-btn" id="nav_users" data-view="users" style="display:none;">Manage users</button>
+      </nav>
+    </aside>
 
-    <!-- Add Host -->
-    <div class="card">
-      <h3 style="margin:0 0 8px">Add Host</h3>
-      <div class="row">
+    <div id="sideBackdrop" class="side-backdrop" onclick="closeSidebar()"></div>
+
+    <!-- RIGHT CONTENT -->
+    <section class="content">
+      <div class="page-head">
         <div>
-          <label>Display Name (optional)</label>
-          <input id="name" type="text" placeholder="e.g. web-1" />
+          <div class="page-title" id="pageTitle">SSH Updater</div>
+          <p class="page-sub" id="pageSub">Manage hosts, run updates, execute scripts, and maintain compose projects.</p>
         </div>
-        <div>
-          <label>IP / Hostname</label>
-          <input id="ip" type="text" placeholder="192.168.1.10" />
-        </div>
-        <div>
-          <label>SSH User</label>
-          <input id="user" type="text" placeholder="root or ubuntu" />
-        </div>
-        <div>
-          <label>Password</label>
-          <input id="password" type="password" placeholder="********" />
-        </div>
-        <div>
-          <label>Port</label>
-          <input id="port" type="number" value="22" />
-        </div>
-        <div>
-          <label>Is Root User?</label>
-          <input id="isRoot" type="checkbox" /> <small>(check if user is already root)</small>
+
+        <div class="top-actions">
+          <button class="ghost mobile-only" id="mobileMenuBtn" onclick="toggleSidebar()" aria-label="Open menu">Menu</button>
+          <label class="toggle" title="Toggle dark mode">
+            <span style="font-size:12px;opacity:.9;">Dark</span>
+            <input id="darkToggle" type="checkbox" />
+          </label>
+          <button class="ghost" id="topAddUserBtn" style="display:none;" onclick="openAddUser()">Add User</button>
+          <button class="ghost" onclick="logout()">Logout</button>
         </div>
       </div>
 
-      <!-- Containers config -->
-      <div class="row">
-        <div>
-          <label>Has Docker containers?</label>
-          <input id="hasContainers" type="checkbox" /> <small>(enable to update compose projects)</small>
-        </div>
-
-        <!-- Shown only when hasContainers is checked -->
-        <div id="add_containers_group" class="hidden">
-          <label>Container path(s) on host <small>(one per line)</small></label>
-          <textarea id="containerPaths" placeholder="/root/app1
-/root/app2" disabled></textarea>
-        </div>
+      <!-- HEADER METRICS (requested in header) -->
+      <div class="metrics" aria-label="Host metrics">
+        <div class="metric"><div><div class="n" id="stat_total">0</div><div class="l">Total hosts</div></div></div>
+        <div class="metric"><div><div class="n" id="stat_with">0</div><div class="l">With containers</div></div></div>
+        <div class="metric"><div><div class="n" id="stat_paths">0</div><div class="l">Container paths</div></div></div>
       </div>
 
-      <div class="actions">
-        <button class="primary" onclick="addHost()">Add</button>
-        <button class="ghost" onclick="refresh(true)">Refresh</button>
-        <button class="danger" onclick="runAll()">Update all Hosts</button>
-        <button class="secondary" onclick="runContainersAll()">Update all containers</button>
-      </div>
-      <div id="addMsg"></div>
-    </div>
+      <div class="views">
+        <!-- ADD HOST VIEW -->
+        <section class="view" id="view-addHost" aria-label="Add host">
+          <div class="card">
+            <div class="row tools-grid">
+              <div>
+                <label>Display Name (optional)</label>
+                <input id="name" type="text" placeholder="e.g. web-1" />
+              </div>
+              <div>
+                <label>IP / Hostname</label>
+                <input id="ip" type="text" placeholder="192.168.1.10" />
+              </div>
+              <div>
+                <label>SSH User</label>
+                <input id="user" type="text" placeholder="root or ubuntu" />
+              </div>
+              <div>
+                <label>Password</label>
+                <input id="password" type="password" placeholder="********" />
+              </div>
+              <div>
+                <label>Port</label>
+                <input id="port" type="number" value="22" />
+              </div>
+              <div>
+                <label>Is Root User?</label>
+                <input id="isRoot" type="checkbox" /> <small>(check if user is already root)</small>
+              </div>
+            </div>
 
-    <!-- Run custom command / script -->
-    <div class="card">
-      <h3 style="margin:0 0 8px">Run custom command or bash script</h3>
-      <div class="row">
-        <div>
-          <label>Command / Script</label>
-          <textarea id="customScript" placeholder="# Example
+            <div class="row" style="margin-top:6px;">
+              <div>
+                <label>Has Docker containers?</label>
+                <input id="hasContainers" type="checkbox" /> <small>(enable to update compose projects)</small>
+              </div>
+
+              <div id="add_containers_group" class="hidden">
+                <label>Container path(s) on host <small>(one per line)</small></label>
+                <textarea id="containerPaths" placeholder="/root/app1\n/root/app2" disabled></textarea>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="primary" onclick="addHost()">Add</button>
+              <button class="ghost" onclick="refresh(true)">Refresh</button>
+              <button class="danger" onclick="runAll()">Update all Hosts</button>
+              <button class="secondary" onclick="runContainersAll()">Update all containers</button>
+            </div>
+            <div id="addMsg"></div>
+          </div>
+        </section>
+
+        <!-- TOOLS VIEW -->
+        <section class="view" id="view-tools" aria-label="Commands and uploads">
+          <div class="card">
+            <h3 style="margin:0 0 12px;">Commands &amp; File upload</h3>
+
+            <div class="row tools-grid">
+              <!-- Left: tools -->
+              <div>
+                <!-- Custom command / script -->
+                <label>Command / Script</label>
+                <textarea id="customScript" placeholder="# Example
 apt-get update -y && apt-get upgrade -y
 # or paste a multiline bash script here"></textarea>
 
-          <div class="actions">
-            <input id="scriptFile" type="file" accept=".sh,.txt,.bash,.zsh,.ksh,.command,text/plain" />
-            <label for="scriptFile" class="btn ghost">Upload file into the box</label>
-            <button class="primary" onclick="runCustom()">Execute on selected</button>
-          </div>
-          <div id="customMsg" class="muted" style="margin-top:6px;color:var(--muted);"></div>
-        </div>
+                <div class="actions tools-actions">
+                  <input id="scriptFile" type="file" accept=".sh,.txt,.bash,.zsh,.ksh,.command,text/plain" />
+                  <label for="scriptFile" class="btn ghost">Upload file into the box</label>
+                  <button class="primary" onclick="runCustom()">Execute on selected</button>
+                  <button class="ghost" onclick="uploadFileOnly()">Upload Only</button>
+                  <button class="secondary" onclick="uploadAndRun()">Upload &amp; Run Command</button>
+                  <button class="primary" onclick="uploadAndInstall()">Upload &amp; Install (.deb)</button>
+                </div>
+                <div class="small muted" style="margin-top:6px; color:var(--muted);">
+                  Tip: For <strong>Upload &amp; Run Command</strong>, reference the uploaded file using <code>{FILE_PATH}</code> (or <code>$FILE_PATH</code>).
+                </div>
+                <div id="customMsg" class="muted" style="margin-top:6px;color:var(--muted);"></div>
 
-        <div>
-          <label>Choose hosts</label>
-          <div class="host-chooser" id="hostChooser">
-            <label><input type="checkbox" id="chooseAll" onchange="toggleChooseAll(this.checked)" /> <strong>Select all</strong></label>
-            <!-- host checkboxes injected here -->
+                <!-- Shared hidden file input for uploads (opened by the buttons above) -->
+                <input id="fileUpload" type="file" style="display:none;" />
+
+                <div id="uploadMsg" class="muted" style="margin-top:6px;color:var(--muted);"></div>
+              </div>
+
+              <!-- Right: unified host chooser -->
+              <div>
+                <label>Choose hosts</label>
+                <div class="host-chooser" id="hostChooser">
+                  <label><input type="checkbox" id="chooseAll" onchange="toggleChooseAll(this.checked)" /> <strong>Select all</strong></label>
+                  <!-- host checkboxes injected here -->
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+
+
+        <!-- HOSTS VIEW -->
+        <section class="view" id="view-hosts" aria-label="Hosts">
+          <div class="card">
+            <div class="actions" style="margin-top:0;">
+              <button class="ghost" onclick="refresh(true)">Refresh</button>
+              <button class="danger" onclick="runAll()">Update all Hosts</button>
+              <button class="danger" onclick="runSelectedHosts()">Update only selected Hosts</button>
+              <button class="secondary" onclick="runContainersAll()">Update all containers</button>
+              <button class="secondary" onclick="runSelectedContainers()">Update only selected containers</button>
+            </div>
+
+            <div class="filters" style="margin-top:12px;">
+              <label class="chip" title="Show only hosts that have at least one container path">
+                <input id="flt_withContainers" type="checkbox" />
+                Only hosts with containers
+              </label>
+
+              <div class="inline-field">
+                <label for="flt_search">Search</label>
+                <input id="flt_search" type="text" placeholder="name, IP, or user…" />
+              </div>
+
+              <div class="inline-field">
+                <label for="flt_sort">Sort by</label>
+                <select id="flt_sort">
+                  <option value="name_asc">Name (A→Z)</option>
+                  <option value="name_desc">Name (Z→A)</option>
+                  <option value="ip_asc">IP (A→Z)</option>
+                  <option value="ip_desc">IP (Z→A)</option>
+                  <option value="user_asc">User (A→Z)</option>
+                  <option value="user_desc">User (Z→A)</option>
+                  <option value="port_asc">Port (lowest)</option>
+                  <option value="port_desc">Port (highest)</option>
+                  <option value="paths_desc">Paths count (high→low)</option>
+                  <option value="paths_asc">Paths count (low→high)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table id="hostsTbl">
+                <thead>
+                  <tr>
+                    <th style="width:44px; text-align:center;">
+                      <input id="hostsSelectAll" type="checkbox" title="Select all visible" onchange="toggleSelectAllVisible(this.checked)" />
+                    </th>
+                    <th>Name</th><th>IP</th><th>User</th><th>Port</th><th>Root?</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- USERS VIEW (admin) -->
+        <section class="view" id="view-users" aria-label="Manage users">
+          <div class="row">
+            <div class="card">
+              <h2 style="margin:0 0 10px;">Create user</h2>
+              <label>Username</label>
+              <input id="um_newUsername" type="text" placeholder="user@example.com" />
+              <label>Password</label>
+              <input id="um_newPassword" type="password" placeholder="********" />
+              <label>Role</label>
+              <select id="um_newRole">
+                <option value="admin">admin</option>
+                <option value="user" selected>user</option>
+              </select>
+              <div class="actions">
+                <button class="primary" onclick="umCreateUser()">Create</button>
+              </div>
+              <div id="umCreateMsg" class="muted" style="margin-top:8px;color:var(--muted);"></div>
+            </div>
+
+            <div class="card">
+              <h2 style="margin:0 0 10px;">Existing users</h2>
+              <div class="table-wrap">
+                <table id="usersTbl">
+                  <thead>
+                    <tr>
+                      <th style="width:160px;">ID</th>
+                      <th>Username</th>
+                      <th style="width:140px;">Role</th>
+                      <th style="width:210px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="umUsersMsg" class="muted" style="margin-top:8px;color:var(--muted);"></div>
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
-
-    <!-- File Upload & Management -->
-    <div class="card">
-      <h3 style="margin:0 0 8px">Upload File to Hosts</h3>
-      <div class="row">
-        <div>
-          <label>File to Upload</label>
-          <input id="fileUpload" type="file" />
-          
-          <!-- Command input (ALWAYS VISIBLE but contextually used) -->
-          <div style="margin-top:12px;">
-            <label>Command to Execute <small>(for "Upload & Run Command" only)</small></label>
-            <input id="customCommand" type="text" placeholder="e.g. chmod +x /root/uploaded-file.sh && /root/uploaded-file.sh" />
-          </div>
-          
-          <div class="actions" style="margin-top:12px;">
-            <button class="ghost" onclick="uploadFileOnly()">Upload Only</button>
-            <button class="secondary" onclick="uploadAndRun()">Upload & Run Command</button>
-            <button class="primary" onclick="uploadAndInstall()">Upload & Install (.deb)</button>
-          </div>
-          
-          <div id="uploadMsg" class="muted" style="margin-top:6px;color:var(--muted);"></div>
-        </div>
-
-        <div>
-          <label>Choose hosts</label>
-          <div class="host-chooser" id="uploadHostChooser">
-            <label><input type="checkbox" id="uploadChooseAll" onchange="toggleUploadChooseAll(this.checked)" /> <strong>Select all</strong></label>
-            <!-- host checkboxes injected here -->
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hosts -->
-    <div class="card">
-      <h3 style="margin:0 0 8px">Hosts</h3>
-
-      <!-- QUICK FILTERS + SEARCH + SORT -->
-      <div class="filters">
-        <label class="chip" title="Show only hosts that have at least one container path">
-          <input id="flt_withContainers" type="checkbox" />
-          Only hosts with containers
-        </label>
-
-        <div class="inline-field">
-          <label for="flt_search">Search</label>
-          <input id="flt_search" type="text" placeholder="name, IP, or user…" />
-        </div>
-
-        <div class="inline-field">
-          <label for="flt_sort">Sort by</label>
-          <select id="flt_sort">
-            <option value="name_asc">Name (A→Z)</option>
-            <option value="name_desc">Name (Z→A)</option>
-            <option value="ip_asc">IP (A→Z)</option>
-            <option value="ip_desc">IP (Z→A)</option>
-            <option value="user_asc">User (A→Z)</option>
-            <option value="user_desc">User (Z→A)</option>
-            <option value="port_asc">Port (lowest)</option>
-            <option value="port_desc">Port (highest)</option>
-            <option value="paths_desc">Paths count (high→low)</option>
-            <option value="paths_asc">Paths count (low→high)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table id="hostsTbl">
-          <thead>
-            <tr>
-              <th>Name</th><th>IP</th><th>User</th><th>Port</th><th>Root?</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </main>
+    </section>
+  </div>
 
   <!-- Logs Modal -->
   <div id="logModal" class="modal-backdrop" onclick="if(event.target.id==='logModal') closeLogs()">
@@ -377,12 +688,57 @@ apt-get update -y && apt-get upgrade -y
             <label>Password</label>
             <input id="newPass" type="password" placeholder="set password" />
           </div>
+          <div>
+            <label>Role</label>
+            <select id="newRole">
+              <option value="admin">admin</option>
+              <option value="user" selected>user</option>
+            </select>
+          </div>
         </div>
         <div class="actions" style="margin-top:10px;">
           <button class="ghost" onclick="closeAddUser()">Cancel</button>
           <button class="primary" onclick="createUser()">Create</button>
         </div>
         <div id="addUserMsg" style="margin-top:8px;color:var(--text);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit User modal -->
+  <div id="editUserModal" class="modal-backdrop" onclick="if(event.target===this) closeEditUser()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editUserTitle">
+      <header>
+        <h3 id="editUserTitle">Edit user</h3>
+        <button class="close-btn" onclick="closeEditUser()">Close</button>
+      </header>
+      <div class="content">
+        <input type="hidden" id="editUser_id" />
+        <div class="row">
+          <div>
+            <label>Username</label>
+            <input id="editUser_username" type="text" />
+          </div>
+          <div>
+            <label>Role</label>
+            <select id="editUser_role">
+              <option value="admin">admin</option>
+              <option value="user">user</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>New password <small class="small">(leave blank to keep existing)</small></label>
+            <input id="editUser_password" type="password" placeholder="Leave blank to keep existing" />
+          </div>
+        </div>
+        <div class="muted" style="margin-top:6px;color:var(--muted);">For safety, the UI prevents deleting or demoting the last admin.</div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="ghost" onclick="closeEditUser()">Cancel</button>
+          <button class="primary" onclick="saveEditUser()">Save</button>
+        </div>
+        <div id="editUserMsg" style="margin-top:8px;color:var(--text);"></div>
       </div>
     </div>
   </div>
@@ -430,8 +786,7 @@ apt-get update -y && apt-get upgrade -y
           </div>
           <div id="edit_containers_group" class="hidden">
             <label>Container path(s) on host <small>(one per line)</small></label>
-            <textarea id="edit_containerPaths" placeholder="/root/app1
-/root/app2" disabled></textarea>
+            <textarea id="edit_containerPaths" placeholder="/root/app1\n/root/app2" disabled></textarea>
           </div>
         </div>
 
@@ -457,17 +812,121 @@ apt-get update -y && apt-get upgrade -y
       localStorage.setItem('sshupdater_theme', darkToggle.checked ? 'dark' : 'light');
     });
 
+    // ---------- Mobile sidebar (off-canvas) ----------
+    function openSidebar(){ document.body.classList.add('sidebar-open'); }
+    function closeSidebar(){ document.body.classList.remove('sidebar-open'); }
+    function toggleSidebar(){ document.body.classList.toggle('sidebar-open'); }
+
+    // Close sidebar on ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+
+    // ---------- View navigation (left menu) ----------
+    const VIEW_META = {
+      addHost: {
+        title: 'Add Host',
+        sub: 'Add a new SSH host and optionally manage docker compose projects on it.'
+      },
+      tools: {
+        title: 'Commands & File upload',
+        sub: 'Run custom commands/scripts and upload files to one or more hosts.'
+      },
+      hosts: {
+        title: 'Hosts',
+        sub: 'Search, sort, edit and execute actions on your saved hosts.'
+      },
+      users: {
+        title: 'Manage users',
+        sub: 'Create, edit, delete users and reset passwords (admin only).'
+      }
+    };
+
+    function setActiveView(viewKey){
+      // Block non-admin users from the admin view.
+      if (viewKey === 'users' && (!window.CURRENT_USER || window.CURRENT_USER.role !== 'admin')) {
+        viewKey = 'hosts';
+      }
+      const meta = VIEW_META[viewKey] || VIEW_META.hosts;
+      document.getElementById('pageTitle').textContent = meta.title;
+      document.getElementById('pageSub').textContent = meta.sub;
+
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewKey));
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${viewKey}`));
+
+      localStorage.setItem('sshupdater_view', viewKey);
+
+      if (viewKey === 'users') umLoadUsers();
+
+      // On mobile, collapse the sidebar after navigation.
+      closeSidebar();
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => setActiveView(btn.dataset.view));
+    });
+
+    // Default view (resolved after /api/auth/me)
+    window.CURRENT_USER = null;
+    (async function initNavAuth(){
+      try{
+        const r = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' });
+        if (r.ok) {
+          const j = await r.json().catch(()=> ({}));
+          if (j && j.user) window.CURRENT_USER = j.user;
+        }
+      }catch(_e){/* ignore */}
+
+      const isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
+      const navUsers = document.getElementById('nav_users');
+      if (navUsers) navUsers.style.display = isAdmin ? '' : 'none';
+      const topAdd = document.getElementById('topAddUserBtn');
+      if (topAdd) topAdd.style.display = isAdmin ? '' : 'none';
+
+      const saved = localStorage.getItem('sshupdater_view') || 'addHost';
+      setActiveView((saved === 'users' && !isAdmin) ? 'hosts' : saved);
+    })();
+
     // ---------- State ----------
     let hostsCache = new Map();
+    // Hosts page selection (for "Update only selected ...")
+    const selectedHostIds = new Set();
+
+    function setHostSelected(id, checked) {
+      if (checked) selectedHostIds.add(String(id));
+      else selectedHostIds.delete(String(id));
+      syncHostsSelectAllCheckbox();
+    }
+
+    function syncHostsSelectAllCheckbox() {
+      const master = document.getElementById('hostsSelectAll');
+      if (!master) return;
+      const boxes = Array.from(document.querySelectorAll('#hostsTbl tbody input[type=checkbox][data-select]'));
+      if (boxes.length === 0) { master.checked = false; master.indeterminate = false; return; }
+      const checkedCount = boxes.filter(b => b.checked).length;
+      master.checked = checkedCount === boxes.length;
+      master.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+    }
+
+    function toggleSelectAllVisible(checked) {
+      document.querySelectorAll('#hostsTbl tbody input[type=checkbox][data-select]').forEach(cb => {
+        cb.checked = checked;
+        setHostSelected(cb.value, checked);
+      });
+      // setHostSelected calls sync already; ensure we clear indeterminate.
+      const master = document.getElementById('hostsSelectAll');
+      if (master) master.indeterminate = false;
+    }
 
     // Filters / search / sort state
     const fltWith = document.getElementById('flt_withContainers');
     const fltSearch = document.getElementById('flt_search');
     const fltSort = document.getElementById('flt_sort');
 
-    fltWith.addEventListener('change', renderTableFromCache);
-    fltSort.addEventListener('change', renderTableFromCache);
-    fltSearch.addEventListener('input', debounce(renderTableFromCache, 120));
+    if (fltWith) fltWith.addEventListener('change', renderTableFromCache);
+    if (fltSort) fltSort.addEventListener('change', renderTableFromCache);
+    if (fltSearch) fltSearch.addEventListener('input', debounce(renderTableFromCache, 120));
 
     function updateStatusBarFromData(data){
       const total = data.length;
@@ -482,28 +941,68 @@ apt-get update -y && apt-get upgrade -y
       try {
         const url = '/api/hosts' + (force ? `?t=${Date.now()}` : '');
         const r = await fetch(url, { credentials: 'include', cache: 'no-store' });
+
+        // Auth errors: send the user to login instead of forcing a reload loop.
+        if (r.status === 401 || r.status === 403) {
+          window.location.href = '/login.html';
+          return;
+        }
+
         const ct = (r.headers.get('content-type') || '');
-        if (!r.ok || !ct.includes('application/json')) throw new Error('Unexpected response');
+
+        // Some proxies/app setups return HTML for unauthenticated requests.
+        if (!ct.includes('application/json')) {
+          const txt = await r.text().catch(() => '');
+          const looksLikeLogin = /<\s*html/i.test(txt) && /(login|sign\s*in|password)/i.test(txt);
+          if (looksLikeLogin) {
+            window.location.href = '/login.html';
+            return;
+          }
+          throw new Error('Unexpected response (non-JSON)');
+        }
+
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error || ('HTTP ' + r.status));
+        }
+
         const data = await r.json();
 
-        hostsCache = new Map(data.map(h => [h._id, h]));
+        // Always keep host IDs as strings for consistent lookup across the UI.
+        // (Event handlers pass IDs as strings; using numeric Map keys breaks get/has.)
+        hostsCache = new Map(data.map(h => [String(h._id), h]));
+        // Prune selection for hosts that no longer exist
+        Array.from(selectedHostIds).forEach(id => { if (!hostsCache.has(id)) selectedHostIds.delete(id); });
         updateStatusBarFromData(data);
 
         renderTableFromCache();
         renderChooserFromData(data);
-        renderUploadChooserFromData(data);
+
+        // Clear any transient header error if we recovered.
+        const sub = document.getElementById('pageSub');
+        if (sub && sub.dataset && sub.dataset.prevText) {
+          sub.textContent = sub.dataset.prevText;
+          delete sub.dataset.prevText;
+        }
       } catch (e) {
-        console.error('refresh failed; forcing full reload', e);
-        setTimeout(() => location.reload(), 150);
+        console.error('refresh failed', e);
+
+        // IMPORTANT: Do not hard-reload in a loop; show a visible error instead.
+        const sub = document.getElementById('pageSub');
+        if (sub) {
+          if (!sub.dataset.prevText) sub.dataset.prevText = sub.textContent;
+          sub.textContent = 'Connection/auth issue detected. Please use Logout/Login or refresh once the backend is reachable.';
+        }
       }
     }
 
     function renderTableFromCache(){
       const tbody = document.querySelector('#hostsTbl tbody');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
-      const onlyWith = fltWith.checked;
-      const q = (fltSearch.value || '').trim().toLowerCase();
+      const onlyWith = fltWith ? fltWith.checked : false;
+      const q = (fltSearch ? fltSearch.value : '').trim().toLowerCase();
 
       // to array
       let list = Array.from(hostsCache.values()).map(h => ({
@@ -525,7 +1024,7 @@ apt-get update -y && apt-get upgrade -y
       }
 
       // sort
-      const sortVal = fltSort.value;
+      const sortVal = fltSort ? fltSort.value : 'name_asc';
       const cmp = (a, b) => {
         const s = (x='') => String(x).toLowerCase();
         switch (sortVal) {
@@ -547,19 +1046,24 @@ apt-get update -y && apt-get upgrade -y
       // render
       list.forEach(h => {
         const tr = document.createElement('tr');
+        const checked = selectedHostIds.has(String(h._id)) ? 'checked' : '';
         tr.innerHTML = `
-          <td>
+          <td data-label="Select" style="text-align:center;">
+            <input type="checkbox" data-select value="${escapeHtml(h._id)}" ${checked} onchange="setHostSelected('${escapeHtml(h._id)}', this.checked)" />
+          </td>
+          <td data-label="Name">
             <div class="namecell">
               ${escapeHtml(h.name)}
               <span class="badge" title="${h.pathsCount} container path${h.pathsCount===1?'':'s'}">${h.pathsCount}</span>
             </div>
           </td>
-          <td>${h.ip}</td>
-          <td>${h.user}</td>
-          <td>${h.port}</td>
-          <td>${h.isRoot ? 'yes' : 'no'}</td>
-          <td style="display:flex; gap:6px; flex-wrap:wrap;">
+          <td data-label="IP">${escapeHtml(h.ip)}</td>
+          <td data-label="User">${escapeHtml(h.user)}</td>
+          <td data-label="Port">${escapeHtml(h.port)}</td>
+          <td data-label="Root">${h.isRoot ? 'yes' : 'no'}</td>
+          <td data-label="Actions" style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="primary" onclick="runHost('${h._id}')">Run</button>
+            <button class="secondary" onclick="openShell('${h._id}')">Shell</button>
             <button class="secondary" onclick="openEditHost('${h._id}')">Edit</button>
             <button class="ghost" onclick="removeHost('${h._id}')">Delete</button>
             ${
@@ -570,10 +1074,13 @@ apt-get update -y && apt-get upgrade -y
           </td>`;
         tbody.appendChild(tr);
       });
+
+      syncHostsSelectAllCheckbox();
     }
 
     function renderChooserFromData(data){
       const chooser = document.getElementById('hostChooser');
+      if (!chooser) return;
       chooser.querySelectorAll('label[data-dyn]').forEach(el => el.remove());
       data.forEach(h => {
         const row = document.createElement('label');
@@ -587,155 +1094,228 @@ apt-get update -y && apt-get upgrade -y
     }
 
     // ---------- File Upload Functions ----------
-    function renderUploadChooserFromData(data) {
-      const chooser = document.getElementById('uploadHostChooser');
-      chooser.querySelectorAll('label[data-dyn]').forEach(el => el.remove());
-      data.forEach(h => {
-        const row = document.createElement('label');
-        row.setAttribute('data-dyn', '1');
-        const pathsCount = Array.isArray(h.containerPaths) ? h.containerPaths.length : 0;
-        row.innerHTML = `<input type="checkbox" data-host value="${h._id}" /> ${escapeHtml(h.name)}
-          <span class="muted">(${escapeHtml(h.ip)})</span>
-          ${pathsCount > 0 ? `<span class="badge" title="${pathsCount} path${pathsCount === 1 ? '' : 's'}">${pathsCount}</span>` : ''}`;
-        chooser.appendChild(row);
-      });
+
+    // Unify upload actions so they behave like "Upload file into the box":
+    // - Clicking an action opens the file picker immediately.
+    // - After selecting a file, we auto-run the requested action as soon as the required inputs are present.
+    let pendingUploadAction = null;   // 'upload' | 'run' | 'install'
+    let pendingUploadFile = null;     // File
+
+    function getSelectedHostIds() {
+      return Array.from(document.querySelectorAll('#hostChooser input[type=checkbox][data-host]:checked'))
+        .map(cb => cb.value);
     }
 
-    function toggleUploadChooseAll(checked) { 
-      document.querySelectorAll('#uploadHostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = checked); 
+    function setUploadMsg(msg) {
+      const el = document.getElementById('uploadMsg');
+      if (el) el.textContent = msg || '';
     }
 
-    async function uploadFileOnly() {
-      await handleFileUpload('upload');
+    function updateUploadFilename(file) {
+      const nameEl = document.getElementById('uploadFileName');
+      if (nameEl) nameEl.textContent = file ? file.name : 'No file selected.';
     }
 
-    async function uploadAndRun() {
-      await handleFileUpload('run');
+    function validatePendingUpload() {
+      if (!pendingUploadAction) return { ok: false, msg: '' };
+      if (!pendingUploadFile) return { ok: false, msg: '' };
+
+      const ids = getSelectedHostIds();
+      if (ids.length === 0) return { ok: false, msg: 'Select at least one host.' };
+
+      if (pendingUploadAction === 'run') {
+        // Use the Command / Script textarea as the source of truth.
+        // This preserves the previous "Upload & Run Command" semantics (a user-provided shell command),
+        // while aligning it with the primary script box.
+        const cmd = (document.getElementById('customScript')?.value || '').trim();
+        if (!cmd) return { ok: false, msg: 'Please enter a command/script in the Command / Script box.' };
+      }
+
+      if (pendingUploadAction === 'install') {
+        // Best-effort guard (backend will still validate/handle)
+        const name = (pendingUploadFile.name || '').toLowerCase();
+        if (!name.endsWith('.deb')) {
+          return { ok: false, msg: 'Please select a .deb package for install.' };
+        }
+      }
+
+      return { ok: true, msg: '' };
     }
 
-    async function uploadAndInstall() {
-      await handleFileUpload('install');
+    async function maybeExecutePendingUpload() {
+      const v = validatePendingUpload();
+      if (!v.ok) {
+        if (v.msg) setUploadMsg(v.msg);
+        return;
+      }
+      const action = pendingUploadAction;
+      const file = pendingUploadFile;
+      pendingUploadAction = null;
+      pendingUploadFile = null;
+      await handleFileUpload(action, file);
     }
 
-    async function handleFileUpload(action) {
+    // File picker: store file, then attempt to execute if requirements are met.
+    document.getElementById('fileUpload').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      pendingUploadFile = f;
+      updateUploadFilename(f);
+      // We do not force requirements before opening the picker; try execution now and also later when inputs change.
+      maybeExecutePendingUpload();
+    });
+
+    // If the user selects hosts or types the command after picking the file, auto-run.
+    document.getElementById('hostChooser')?.addEventListener('change', () => {
+      if (pendingUploadAction && pendingUploadFile) maybeExecutePendingUpload();
+    });
+    document.getElementById('customScript')?.addEventListener('input', () => {
+      if (pendingUploadAction && pendingUploadFile) maybeExecutePendingUpload();
+    });
+
+    function startUploadAction(action) {
+      pendingUploadAction = action;
+
+      const hint = (action === 'upload')
+        ? 'Select a file to upload.'
+        : (action === 'run')
+          ? 'Select a file to upload, then the command will be executed.'
+          : 'Select a .deb package to upload and install.';
+      setUploadMsg(hint);
+
+      // Open file picker (same user experience as "Upload file into the box")
+      const fi = document.getElementById('fileUpload');
+      if (fi) {
+        fi.accept = (action === 'install') ? '.deb' : '';
+        // Ensure selecting the same file again still triggers a change event
+        fi.value = '';
+        fi.click();
+      }
+    }
+
+    function uploadFileOnly() { startUploadAction('upload'); }
+    function uploadAndRun() { startUploadAction('run'); }
+    function uploadAndInstall() { startUploadAction('install'); }
+
+
+    async function handleFileUpload(action, fileOverride) {
       const fileInput = document.getElementById('fileUpload');
-      const file = fileInput.files[0];
-      
+      const file = fileOverride || (fileInput.files && fileInput.files[0]);
+
       if (!file) {
         document.getElementById('uploadMsg').textContent = 'Please select a file to upload.';
         return;
       }
-      
-      const ids = Array.from(document.querySelectorAll('#uploadHostChooser input[type=checkbox][data-host]:checked')).map(cb => cb.value);
+
+      const ids = Array.from(document.querySelectorAll('#hostChooser input[type=checkbox][data-host]:checked')).map(cb => cb.value);
       if (ids.length === 0) {
         document.getElementById('uploadMsg').textContent = 'Select at least one host.';
         return;
       }
-      
+
       let command = '';
       if (action === 'run') {
-        command = document.getElementById('customCommand').value.trim();
+        command = (document.getElementById('customScript')?.value || '').trim();
         if (!command) {
-          document.getElementById('uploadMsg').textContent = 'Please enter a command to execute.';
+          document.getElementById('uploadMsg').textContent = 'Please enter a command/script in the Command / Script box.';
           return;
         }
       }
-      
+
       document.getElementById('uploadMsg').textContent = 'Reading file...';
-      
+
       try {
         const fileBuffer = await readFileAsArrayBuffer(file);
         const fileB64 = arrayBufferToBase64(fileBuffer);
-        
+
         if (fileB64.length > 14000000) { // ~10MB base64 encoded
           document.getElementById('uploadMsg').textContent = 'File too large (max 10 MB).';
           return;
         }
-        
-        // Show logs modal immediately
+
         let modalTitle = 'Uploading file';
         if (action === 'run') modalTitle = 'Uploading file and running command';
         else if (action === 'install') modalTitle = 'Uploading and installing file';
-        
+
         ensureLogModal(`${modalTitle} on ${ids.length} host(s)`);
-        
+
         const payload = {
           hostIds: ids,
           fileB64: fileB64,
           fileName: file.name,
           action: action
         };
-        
-        if (action === 'run') {
-          payload.command = command;
-        }
-        
+
+        if (action === 'run') payload.command = command;
+
         const r = await fetch('/api/uploadFileStream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify(payload)
         });
-        
+
         const data = await r.json();
         if (!data.ok) {
           closeLogs();
           document.getElementById('uploadMsg').textContent = data.error || 'Failed to start upload';
           return;
         }
-        
-        // Connect to the SSE stream for this job - USE THE CORRECT ENDPOINT
+
         const jobId = data.jobId;
         if (currentES) {
           currentES.close();
           currentES = null;
         }
-        
-        // Use the dedicated file upload streaming endpoint
+
         currentES = new EventSource(`/api/stream/uploadFile?job=${encodeURIComponent(jobId)}`);
-        
-        currentES.addEventListener('hostStart', (e) => { 
+        wireSSE(currentES);
+
+	        currentES.addEventListener('hostStart', (e) => { 
           try {
             const d = JSON.parse(e.data); 
-            const key = cssKey(d.ip || d.host); 
+	            const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`);
             appendHostBlockIfMissing(key, d.host || 'host', d.ip); 
           } catch (err) {
             console.error('Error parsing hostStart:', err);
           }
         });
-        
-        currentES.addEventListener('log', (e) => { 
+
+	        currentES.addEventListener('log', (e) => { 
           try {
             const d = JSON.parse(e.data); 
-            const key = cssKey(d.ip || d.host); 
+	            const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`);
             appendLog(key, d.chunk); 
           } catch (err) {
             console.error('Error parsing log:', err);
           }
         });
-        
-        currentES.addEventListener('hostEnd', (e) => { 
+
+	        currentES.addEventListener('hostEnd', (e) => { 
           try {
             const d = JSON.parse(e.data); 
-            const key = cssKey(d.ip || d.host); 
+	            const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`);
             setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); 
           } catch (err) {
             console.error('Error parsing hostEnd:', err);
           }
         });
-        
+
         currentES.addEventListener('done', () => { 
           if (currentES) { 
             currentES.close(); 
             currentES = null; 
           }
           refreshOnLogClose = true;
-          // Reset form
+          // Reset any pending state for the unified upload action
+          pendingUploadAction = null;
+          pendingUploadFile = null;
+
           fileInput.value = '';
-          document.getElementById('customCommand').value = '';
+          updateUploadFilename(null);
           document.getElementById('uploadMsg').textContent = 'File upload completed.';
         });
-        
+
         currentES.addEventListener('error', (e) => {
           console.error('EventSource error:', e);
           document.getElementById('uploadMsg').textContent = 'Stream connection error.';
@@ -744,9 +1324,9 @@ apt-get update -y && apt-get upgrade -y
             currentES = null;
           }
         });
-        
+
         document.getElementById('uploadMsg').textContent = 'Upload started...';
-        
+
       } catch (e) {
         console.error('File upload failed:', e);
         document.getElementById('uploadMsg').textContent = 'Upload failed: ' + e.message;
@@ -792,6 +1372,68 @@ apt-get update -y && apt-get upgrade -y
       document.getElementById('logModal').style.display = 'flex';
     }
     function cssKey(s) { return String(s || '').replace(/[^a-zA-Z0-9_.-]/g, '_'); }
+
+    function appendModalNotice(text) {
+      const c = document.getElementById('logModalContent');
+      if (!c) return;
+      const n = document.createElement('div');
+      n.className = 'small';
+      n.style.margin = '0 0 10px';
+      n.textContent = text;
+      c.prepend(n);
+    }
+
+    // Robust SSE wiring: surface immediate auth/route issues and detect "no data" situations.
+    function wireSSE(es) {
+      let sawPing = false;
+      let sawData = false;
+      const markPing = () => { sawPing = true; };
+      const markData = () => { sawData = true; };
+
+      // Some endpoints emit an explicit ping as the first event.
+      es.addEventListener('ping', markPing);
+      es.addEventListener('hostStart', markData);
+      es.addEventListener('log', markData);
+      es.addEventListener('hostEnd', markData);
+      es.addEventListener('done', markData);
+
+      es.onopen = () => {
+        // Do not spam; just a single hint that the stream is alive.
+        appendModalNotice('Stream connected.');
+      };
+
+      es.onerror = () => {
+        // EventSource gives no reliable status code; provide actionable guidance.
+        appendModalNotice('Stream connection error. If this persists, restart the container and ensure server.js was updated.');
+      };
+
+      // If no events arrive shortly after opening, call it out explicitly.
+      setTimeout(() => {
+        if (!sawPing && !sawData) {
+          appendModalNotice('No stream data received yet. If you just updated the UI, make sure the backend container was rebuilt/restarted so the streaming endpoints exist.');
+        }
+      }, 2500);
+
+      // If we get a ping (meaning the endpoint exists) but no host output, call it out.
+      setTimeout(() => {
+        if (sawPing && !sawData) {
+          appendModalNotice('Stream connected, but no host output yet. If this stays stuck on "connecting…", verify the selected hosts are reachable and check container logs for SSH errors.');
+        }
+      }, 6000);
+    }
+
+    // Pre-create host blocks so the log modal is never "empty" while waiting for SSH connect.
+    function primeHostBlocksFromIds(ids) {
+      ids.forEach((id) => {
+        const h = hostsCache.get(String(id));
+        const name = (h && h.name) ? h.name : `Host ${id}`;
+        const ip = (h && h.ip) ? h.ip : '';
+        const key = cssKey(`${name}|${ip}`);
+        appendHostBlockIfMissing(key, name, ip);
+        const meta = document.getElementById(`meta-${key}`);
+        if (meta) meta.textContent = 'connecting...';
+      });
+    }
     function appendHostBlockIfMissing(key, name, ip) {
       const c = document.getElementById('logModalContent');
       if (document.getElementById(`hb-${key}`)) return;
@@ -809,6 +1451,7 @@ apt-get update -y && apt-get upgrade -y
         </div>`;
       c.appendChild(block);
     }
+
     function appendLog(key, chunk) {
       const pre = document.getElementById(`pre-${key}`);
       if (!pre) return;
@@ -844,11 +1487,221 @@ apt-get update -y && apt-get upgrade -y
     async function createUser() {
       const username = document.getElementById('newUser').value.trim();
       const password = document.getElementById('newPass').value;
+      const role = document.getElementById('newRole') ? document.getElementById('newRole').value : 'user';
       if (!username || !password) { document.getElementById('addUserMsg').textContent = 'Username and password are required.'; return; }
-      const r = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ username, password }) });
-      const data = await r.json();
-      if (data.ok) { document.getElementById('addUserMsg').textContent = 'User created.'; setTimeout(closeAddUser, 700); }
+      const r = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ username, password, role }) });
+      const data = await r.json().catch(()=> ({}));
+      if (r.ok && data.ok) {
+        document.getElementById('addUserMsg').textContent = 'User created.';
+        // Refresh user list if on Manage users view
+        if (document.getElementById('view-users')?.classList.contains('active')) {
+          umLoadUsers();
+        }
+        setTimeout(closeAddUser, 700);
+      }
       else { document.getElementById('addUserMsg').textContent = data.error || 'Failed to create user.'; }
+    }
+
+    // ---------- User management (Manage users view) ----------
+    let UM_USERS = [];
+
+    function umIdShort(id){
+      const s = String(id || '');
+      return s.length <= 10 ? s : (s.slice(0, 8) + '…');
+    }
+
+    async function umLoadUsers(){
+      const msg = document.getElementById('umUsersMsg');
+      if (msg) msg.textContent = 'Loading…';
+      try{
+        const r = await fetch('/api/users', { credentials:'include', cache:'no-store' });
+        const data = await r.json().catch(()=> null);
+        if (!r.ok) {
+          if (msg) msg.textContent = (data && data.error) ? data.error : 'Failed to load users.';
+          return;
+        }
+        UM_USERS = Array.isArray(data) ? data : [];
+        umRenderUsers();
+        if (msg) msg.textContent = '';
+      }catch(err){
+        if (msg) msg.textContent = 'Network error: ' + err.message;
+      }
+    }
+
+    function umRenderUsers(){
+      const tbody = document.querySelector('#usersTbl tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      const adminCount = UM_USERS.filter(u => u.role === 'admin').length;
+
+      UM_USERS.forEach(u => {
+        const isLastAdmin = (u.role === 'admin' && adminCount <= 1);
+
+        const tr = document.createElement('tr');
+
+        const tdId = document.createElement('td');
+        tdId.setAttribute('data-label','ID');
+        tdId.textContent = umIdShort(u._id);
+        tdId.title = String(u._id);
+
+        const tdU = document.createElement('td');
+        tdU.setAttribute('data-label','Username');
+        tdU.textContent = u.username;
+
+        const tdR = document.createElement('td');
+        tdR.setAttribute('data-label','Role');
+        tdR.textContent = u.role;
+
+        const tdA = document.createElement('td');
+        tdA.setAttribute('data-label','Actions');
+        tdA.style.display = 'flex';
+        tdA.style.gap = '8px';
+        tdA.style.alignItems = 'center';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'ghost';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = () => openEditUser(u);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'danger';
+        delBtn.textContent = 'Delete';
+        delBtn.style.padding = '10px 14px';
+        if (isLastAdmin) {
+          delBtn.disabled = true;
+          delBtn.title = 'Cannot delete the last admin';
+          delBtn.style.opacity = '.6';
+          delBtn.style.cursor = 'not-allowed';
+        } else {
+          delBtn.onclick = () => umDeleteUser(u);
+        }
+
+        tdA.appendChild(editBtn);
+        tdA.appendChild(delBtn);
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdU);
+        tr.appendChild(tdR);
+        tr.appendChild(tdA);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function umCreateUser(){
+      const msg = document.getElementById('umCreateMsg');
+      if (msg) msg.textContent = '';
+
+      const username = document.getElementById('um_newUsername').value.trim();
+      const password = document.getElementById('um_newPassword').value;
+      const role = document.getElementById('um_newRole').value;
+      if (!username || !password) {
+        if (msg) msg.textContent = 'Username and password are required.';
+        return;
+      }
+
+      if (msg) msg.textContent = 'Creating…';
+      try{
+        const r = await fetch('/api/users', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({ username, password, role })
+        });
+        const data = await r.json().catch(()=> ({}));
+        if (r.ok && data.ok) {
+          if (msg) msg.textContent = 'User created.';
+          document.getElementById('um_newUsername').value = '';
+          document.getElementById('um_newPassword').value = '';
+          document.getElementById('um_newRole').value = 'user';
+          umLoadUsers();
+        } else {
+          if (msg) msg.textContent = data.error || 'Failed to create user.';
+        }
+      }catch(err){
+        if (msg) msg.textContent = 'Network error: ' + err.message;
+      }
+    }
+
+    function openEditUser(u){
+      const adminCount = UM_USERS.filter(x => x.role === 'admin').length;
+      const isLastAdmin = (u.role === 'admin' && adminCount <= 1);
+
+      document.getElementById('editUser_id').value = u._id;
+      document.getElementById('editUser_username').value = u.username || '';
+      document.getElementById('editUser_role').value = u.role || 'user';
+      document.getElementById('editUser_password').value = '';
+      document.getElementById('editUserMsg').textContent = '';
+
+      const roleSel = document.getElementById('editUser_role');
+      if (roleSel) {
+        roleSel.disabled = isLastAdmin;
+        roleSel.title = isLastAdmin ? 'Cannot demote the last admin' : '';
+      }
+
+      document.getElementById('editUserModal').style.display = 'flex';
+      setTimeout(() => document.getElementById('editUser_username').focus(), 0);
+    }
+
+    function closeEditUser(){
+      document.getElementById('editUserModal').style.display = 'none';
+    }
+
+    async function saveEditUser(){
+      const msg = document.getElementById('editUserMsg');
+      if (msg) msg.textContent = 'Saving…';
+
+      const id = document.getElementById('editUser_id').value;
+      const username = document.getElementById('editUser_username').value.trim();
+      const role = document.getElementById('editUser_role').value;
+      const password = document.getElementById('editUser_password').value;
+
+      if (!id || !username) {
+        if (msg) msg.textContent = 'Username is required.';
+        return;
+      }
+
+      const body = { username, role };
+      if (password) body.password = password;
+
+      try{
+        const r = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify(body)
+        });
+        const data = await r.json().catch(()=> ({}));
+        if (r.ok && data.ok) {
+          if (msg) msg.textContent = 'Saved.';
+          umLoadUsers();
+          setTimeout(closeEditUser, 500);
+        } else {
+          if (msg) msg.textContent = data.error || 'Failed to save user.';
+        }
+      }catch(err){
+        if (msg) msg.textContent = 'Network error: ' + err.message;
+      }
+    }
+
+    async function umDeleteUser(u){
+      const label = u && u.username ? u.username : 'this user';
+      if (!confirm(`Delete ${label}?`)) return;
+
+      const msg = document.getElementById('umUsersMsg');
+      if (msg) msg.textContent = 'Deleting…';
+      try{
+        const r = await fetch(`/api/users/${encodeURIComponent(u._id)}`, { method:'DELETE', credentials:'include' });
+        const data = await r.json().catch(()=> ({}));
+        if (r.ok && data.ok) {
+          if (msg) msg.textContent = 'Deleted.';
+          umLoadUsers();
+        } else {
+          if (msg) msg.textContent = data.error || 'Failed to delete user.';
+        }
+      }catch(err){
+        if (msg) msg.textContent = 'Network error: ' + err.message;
+      }
     }
 
     // ---------- APT (SSE) ----------
@@ -856,9 +1709,11 @@ apt-get update -y && apt-get upgrade -y
       ensureLogModal('Execution Logs (streaming)…');
       if (currentES) currentES.close();
       currentES = new EventSource(`/api/stream/run/${encodeURIComponent(id)}`);
-      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
-      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendLog(key, d.chunk); });
-      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      wireSSE(currentES);
+      // Use a stable unique key for the selected host (IDs can share IPs).
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(`id:${id}`); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(`id:${id}`); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(`id:${id}`); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
       currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
     }
     async function runAll() {
@@ -866,10 +1721,78 @@ apt-get update -y && apt-get upgrade -y
       ensureLogModal('Executing on all hosts (streaming)…');
       if (currentES) currentES.close();
       currentES = new EventSource('/api/stream/runAll');
-      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
-      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendLog(key, d.chunk); });
-      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      wireSSE(currentES);
+      // Use host+ip to avoid collisions when multiple entries share the same IP.
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
       currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
+    }
+
+    // Run APT updates on a selection using the same proven per-host stream endpoint
+    // as the single-host action (/api/stream/run/:id). This avoids "connecting..." hangs
+    // that can occur if a multiplexed selected-host endpoint does not emit host events.
+    let multiES = [];
+    function closeAllStreams() {
+      if (currentES) { try { currentES.close(); } catch (_) {} currentES = null; }
+      if (Array.isArray(multiES)) {
+        multiES.forEach(es => { try { es.close(); } catch (_) {} });
+      }
+      multiES = [];
+    }
+
+    async function runSelectedHosts() {
+      const ids = Array.from(selectedHostIds);
+      if (ids.length === 0) { alert('Please select at least one host.'); return; }
+      if (!confirm(`Run update/upgrade on ${ids.length} selected host(s)?`)) return;
+
+      ensureLogModal(`Executing on ${ids.length} selected host(s) (streaming)…`);
+      closeAllStreams();
+
+      // Pre-create blocks so the modal is never empty.
+      primeHostBlocksFromIds(ids);
+
+      for (const id of ids) {
+        const h = hostsCache.get(String(id));
+        const name = (h && h.name) ? h.name : `Host ${id}`;
+        const ip = (h && h.ip) ? h.ip : '';
+        const key = cssKey(`${name}|${ip}`);
+
+        await new Promise((resolve) => {
+          const es = new EventSource(`/api/stream/run/${encodeURIComponent(id)}`);
+          multiES.push(es);
+
+          es.onopen = () => {
+            const meta = document.getElementById(`meta-${key}`);
+            if (meta) meta.textContent = 'running...';
+          };
+          es.onerror = () => {
+            setHostEnd(key, false, null, null, 'Stream error (check authentication/backend logs).');
+            try { es.close(); } catch (_) {}
+            resolve();
+          };
+
+          es.addEventListener('hostStart', (e) => {
+            const d = JSON.parse(e.data);
+            const k = cssKey(`${d.host || name}|${d.ip || ip}`);
+            appendHostBlockIfMissing(k, d.host || name, d.ip || ip);
+          });
+          es.addEventListener('log', (e) => {
+            const d = JSON.parse(e.data);
+            const k = cssKey(`${d.host || name}|${d.ip || ip}`);
+            appendLog(k, d.chunk);
+          });
+          es.addEventListener('hostEnd', (e) => {
+            const d = JSON.parse(e.data);
+            const k = cssKey(`${d.host || name}|${d.ip || ip}`);
+            setHostEnd(k, d.ok, d.durationMs, d.exitCode, d.error);
+          });
+          es.addEventListener('done', () => {
+            try { es.close(); } catch (_) {}
+            resolve();
+          });
+        });
+      }
     }
 
     // ---------- Containers (SSE) ----------
@@ -877,58 +1800,96 @@ apt-get update -y && apt-get upgrade -y
       ensureLogModal('Updating containers on all hosts (streaming)…');
       if (currentES) currentES.close();
       currentES = new EventSource('/api/stream/runContainersAll');
-      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
-      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); appendLog(key, d.chunk); });
-      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      wireSSE(currentES);
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
       currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
+    }
+
+    async function runSelectedContainers() {
+      const ids = Array.from(selectedHostIds);
+      if (ids.length === 0) { alert('Please select at least one host.'); return; }
+
+      ensureLogModal(`Updating containers on ${ids.length} selected host(s) (streaming)…`);
+      closeAllStreams();
+
+      // Pre-create blocks so the modal is never empty.
+      primeHostBlocksFromIds(ids);
+
+      for (const id of ids) {
+        const h = hostsCache.get(String(id));
+        const name = (h && h.name) ? h.name : `Host ${id}`;
+        const ip = (h && h.ip) ? h.ip : '';
+        const key = cssKey(`${name}|${ip}`);
+
+        await new Promise((resolve) => {
+          const es = new EventSource(`/api/stream/runContainers/${encodeURIComponent(id)}`);
+          multiES.push(es);
+
+          es.onopen = () => {
+            const meta = document.getElementById(`meta-${key}`);
+            if (meta) meta.textContent = 'running...';
+          };
+          es.onerror = () => {
+            setHostEnd(key, false, null, null, 'Stream error (check authentication/backend logs).');
+            try { es.close(); } catch (_) {}
+            resolve();
+          };
+
+          es.addEventListener('hostStart', (e) => {
+            const d = JSON.parse(e.data);
+            const k = cssKey(`${d.host || name}|${d.ip || ip}`);
+            appendHostBlockIfMissing(k, d.host || name, d.ip || ip);
+          });
+          es.addEventListener('log', (e) => {
+            const d = JSON.parse(e.data);
+            const k = cssKey(`${d.host || name}|${d.ip || ip}`);
+            appendLog(k, d.chunk);
+          });
+          es.addEventListener('hostEnd', (e) => {
+            const d = JSON.parse(e.data);
+            const k = cssKey(`${d.host || name}|${d.ip || ip}`);
+            setHostEnd(k, d.ok, d.durationMs, d.exitCode, d.error);
+          });
+          es.addEventListener('done', () => {
+            try { es.close(); } catch (_) {}
+            resolve();
+          });
+        });
+      }
     }
     async function runContainersHost(id) {
       ensureLogModal('Update containers (streaming)…');
       if (currentES) currentES.close();
       currentES = new EventSource(`/api/stream/runContainers/${encodeURIComponent(id)}`);
-      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
-      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); appendLog(key, d.chunk); });
-      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(d.ip || d.host || id); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
+      wireSSE(currentES);
+      currentES.addEventListener('hostStart', (e) => { const d = JSON.parse(e.data); const key = cssKey(`id:${id}`); appendHostBlockIfMissing(key, d.host || 'host', d.ip); });
+      currentES.addEventListener('log', (e) => { const d = JSON.parse(e.data); const key = cssKey(`id:${id}`); appendLog(key, d.chunk); });
+      currentES.addEventListener('hostEnd', (e) => { const d = JSON.parse(e.data); const key = cssKey(`id:${id}`); setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); });
       currentES.addEventListener('done', () => { if (currentES) { currentES.close(); currentES = null; } });
     }
 
     // ---------- Custom script (streaming) ----------
     document.getElementById('scriptFile').addEventListener('change', (e) => {
-      const f = e.target.files[0]; 
-      if (!f) return;
+      const f = e.target.files[0]; if (!f) return;
       const reader = new FileReader();
-      reader.onload = () => { 
-        document.getElementById('customScript').value = reader.result; 
-      };
+      reader.onload = () => { document.getElementById('customScript').value = reader.result; };
       reader.readAsText(f);
     });
-
-    function toggleChooseAll(checked) { 
-      document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = checked); 
-    }
-
-    function utf8ToB64(str) { 
-      try {
-        return btoa(unescape(encodeURIComponent(str)));
-      } catch (e) {
-        console.error('Base64 encoding failed:', e);
-        return btoa(str);
-      }
-    }
-
+    function toggleChooseAll(checked) { document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = checked); }
+    function utf8ToB64(str) { return btoa(unescape(encodeURIComponent(str))); }
     function resetCustomForm() {
       document.getElementById('customScript').value = '';
       document.getElementById('scriptFile').value = '';
       document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = false);
-      const all = document.getElementById('chooseAll'); 
-      if (all) all.checked = false;
+      const all = document.getElementById('chooseAll'); if (all) all.checked = false;
     }
-
     async function runCustom() {
-      const script = document.getElementById('customScript').value.trim();
+      const script = document.getElementById('customScript').value;
       const ids = Array.from(document.querySelectorAll('#hostChooser input[type=checkbox][data-host]:checked')).map(cb => cb.value);
-      
-      if (!script) { 
+
+      if (!script.trim()) { 
         document.getElementById('customMsg').textContent = 'Please paste a command or script.'; 
         return; 
       }
@@ -936,76 +1897,53 @@ apt-get update -y && apt-get upgrade -y
         document.getElementById('customMsg').textContent = 'Select at least one host.'; 
         return; 
       }
-      
+
       document.getElementById('customMsg').textContent = 'Starting execution...';
-      
+
+      const b64 = utf8ToB64(script);
+      if (b64.length > 280000) { 
+        document.getElementById('customMsg').textContent = 'Script too large (max ~200 KB).'; 
+        return; 
+      }
+
       try {
-        const b64 = utf8ToB64(script);
-        if (b64.length > 280000) { 
-          document.getElementById('customMsg').textContent = 'Script too large (max ~200 KB).'; 
-          return; 
-        }
-        
-        // Show logs modal immediately
         ensureLogModal(`Executing custom script on ${ids.length} host(s)`);
-        
-        // Start the job via streaming endpoint
+
         const r = await fetch('/api/runCustomStream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ 
-            hostIds: ids, 
-            scriptB64: b64 
-          })
+          body: JSON.stringify({ hostIds: ids, scriptB64: b64 })
         });
-        
+
         const data = await r.json();
         if (!data.ok) {
           closeLogs();
           document.getElementById('customMsg').textContent = data.error || 'Failed to start execution';
           return;
         }
-        
-        // Connect to the SSE stream for this job
+
         const jobId = data.jobId;
-        if (currentES) {
-          currentES.close();
-          currentES = null;
-        }
-        
+        if (currentES) currentES.close();
+
         currentES = new EventSource(`/api/stream/runCustom?job=${encodeURIComponent(jobId)}`);
-        
+        wireSSE(currentES);
+        // Use host+ip to avoid collisions when multiple entries share the same IP.
         currentES.addEventListener('hostStart', (e) => { 
-          try {
-            const d = JSON.parse(e.data); 
-            const key = cssKey(d.ip || d.host); 
-            appendHostBlockIfMissing(key, d.host || 'host', d.ip); 
-          } catch (err) {
-            console.error('Error parsing hostStart:', err);
-          }
+          const d = JSON.parse(e.data); 
+          const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); 
+          appendHostBlockIfMissing(key, d.host || 'host', d.ip); 
         });
-        
         currentES.addEventListener('log', (e) => { 
-          try {
-            const d = JSON.parse(e.data); 
-            const key = cssKey(d.ip || d.host); 
-            appendLog(key, d.chunk); 
-          } catch (err) {
-            console.error('Error parsing log:', err);
-          }
+          const d = JSON.parse(e.data); 
+          const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); 
+          appendLog(key, d.chunk); 
         });
-        
         currentES.addEventListener('hostEnd', (e) => { 
-          try {
-            const d = JSON.parse(e.data); 
-            const key = cssKey(d.ip || d.host); 
-            setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); 
-          } catch (err) {
-            console.error('Error parsing hostEnd:', err);
-          }
+          const d = JSON.parse(e.data); 
+          const key = cssKey(`${d.host || 'host'}|${d.ip || ''}`); 
+          setHostEnd(key, d.ok, d.durationMs, d.exitCode, d.error); 
         });
-        
         currentES.addEventListener('done', () => { 
           if (currentES) { 
             currentES.close(); 
@@ -1013,20 +1951,10 @@ apt-get update -y && apt-get upgrade -y
           }
           refreshOnLogClose = true;
           resetCustomOnClose = true;
-          document.getElementById('customMsg').textContent = 'Execution completed.';
         });
-        
-        currentES.addEventListener('error', (e) => {
-          console.error('EventSource error:', e);
-          document.getElementById('customMsg').textContent = 'Stream connection error.';
-          if (currentES) {
-            currentES.close();
-            currentES = null;
-          }
-        });
-        
-        document.getElementById('customMsg').textContent = 'Execution started...';
-        
+
+        document.getElementById('customMsg').textContent = '';
+
       } catch (e) {
         console.error('runCustom failed:', e);
         document.getElementById('customMsg').textContent = 'Failed to start execution: ' + e.message;
@@ -1114,7 +2042,7 @@ apt-get update -y && apt-get upgrade -y
     }
     async function addHost() {
       const addBtn = document.querySelector('button.primary[onclick="addHost()"]');
-      addBtn.disabled = true;
+      if (addBtn) addBtn.disabled = true;
       try {
         const hasC = document.getElementById('hasContainers').checked;
         const body = {
@@ -1133,21 +2061,20 @@ apt-get update -y && apt-get upgrade -y
         const data = await r.json();
         const msg = document.getElementById('addMsg');
         if (r.ok && data && !data.error) {
-          msg.textContent = 'Host saved.'; clearHostForm(); await refresh(true); setTimeout(() => { msg.textContent = ''; }, 2000);
-        } else { msg.textContent = (data && data.error) ? ('Error: ' + data.error) : 'Error saving host'; }
-      } catch (e) { document.getElementById('addMsg').textContent = 'Network error: ' + e.message; }
-      finally { addBtn.disabled = false; }
+          msg.textContent = 'Host saved.';
+          clearHostForm();
+          await refresh(true);
+          setTimeout(() => { msg.textContent = ''; }, 2000);
+        } else {
+          msg.textContent = (data && data.error) ? ('Error: ' + data.error) : 'Error saving host';
+        }
+      } catch (e) {
+        document.getElementById('addMsg').textContent = 'Network error: ' + e.message;
+      } finally {
+        if (addBtn) addBtn.disabled = false;
+      }
     }
     async function removeHost(id) { if (!confirm('Delete this host?')) return; await fetch('/api/hosts/' + id, { method: 'DELETE', credentials:'include' }); refresh(true); }
-
-    function hostBlock(name, ip, ok, ms, code, log) {
-      const pill = `<span class="pill ${ok ? 'ok' : 'fail'}">${ok ? 'OK' : 'FAIL'}</span>`;
-      const meta = `exitCode=${code ?? 'n/a'} • time=${ms}ms`;
-      return `<div class="host-block">
-        <div class="host-head"><div class="host-title">${escapeHtml(name)} <span class="small">(${escapeHtml(ip||'')})</span></div>${pill}</div>
-        <div class="host-body"><div class="small" style="margin-bottom:6px;">${escapeHtml(meta)}</div><pre class="mono">${escapeHtml(log||'')}</pre></div>
-      </div>`;
-    }
 
     // Initial toggles & load
     function initContainersToggle() {
@@ -1155,11 +2082,53 @@ apt-get update -y && apt-get upgrade -y
       document.getElementById('add_containers_group').classList.toggle('hidden', !on);
       document.getElementById('containerPaths').disabled = !on;
     }
+
+    // ---------- Shell (IntelliSSH integration; already supported server-side) ----------
+    async function openShell(id) {
+      // IntelliSSH integration (parity with original UI): open terminal by host name.
+      try {
+        let h = hostsCache.get(id);
+        if (!h) {
+          await refresh(true);
+          h = hostsCache.get(id);
+        }
+        const name = (h && h.name) ? h.name : null;
+        if (!name) {
+          alert('Shell is not available: host not found.');
+          return;
+        }
+
+        const r = await fetch('/api/intellissh/terminal?name=' + encodeURIComponent(name), { credentials: 'include' });
+        const data = await r.json().catch(() => ({}));
+
+        if (r.ok && data && data.success && data.url) {
+          window.open(data.url, '_blank', 'noopener');
+          return;
+        }
+
+        alert((data && (data.message || data.error)) || 'Shell is not available.');
+      } catch (e) {
+        alert('Shell error: ' + e.message);
+      }
+    }
+
+    // Load
     refresh();
     initContainersToggle();
 
     // Utils
-    function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    // Robust HTML escaping: always coerce to string.
+    // The API returns numbers for some fields (e.g., port). Without coercion,
+    // calling .replace() would throw and prevent host rows from rendering.
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
     function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
   </script>
 </body>

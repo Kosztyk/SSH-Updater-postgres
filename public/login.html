@@ -121,8 +121,57 @@
     .ghost { background: transparent; color: var(--text); border:1px solid var(--card-border); }
     .msg { margin-top:10px; text-align:center; font-size:14px; color: var(--muted); min-height:20px; }
 
+    .linkrow{ display:flex; justify-content:center; margin-top:10px; }
+    .linkbtn{ background:transparent; border:0; color:var(--primary); cursor:pointer; font-weight:800; padding:6px 10px; }
+    .linkbtn:hover{ text-decoration:underline; }
+
+    /* Modal (same visual language as main UI) */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+    .modal-backdrop.show{ display:flex; }
+    .modal{
+      width: min(620px, 100%);
+      background: var(--card);
+      border:1px solid var(--card-border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modal header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding: 12px 14px;
+      border-bottom:1px solid var(--card-border);
+    }
+    .modal header h3{ margin:0; }
+    .modal .content{ padding: 14px; }
+    .close-btn{ background: transparent; border:1px solid var(--card-border); color: var(--text); padding:8px 10px; border-radius:10px; cursor:pointer; font-weight:900; }
+    .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+    .modal-msg{ margin-top:10px; font-size:14px; color: var(--muted); min-height:20px; }
+
     @media (max-width:520px){
       .card { padding:16px 12px; }
+    }
+
+
+    @media (max-width: 420px){
+      .actions{ flex-direction:column; align-items:stretch; }
+      .actions button{ width:100%; }
+    }
+
+    @media (max-width:600px){
+      .modal-backdrop{ padding:0; }
+      .modal{ width:100vw; height:100vh; border-radius:0; }
+      .modal header{ border-radius:0; }
+      .modal .content{ height: calc(100vh - 56px); overflow:auto; }
     }
   </style>
 </head>
@@ -155,8 +204,37 @@
           <!-- NEW: Register button (hidden by default; shown only if no users in DB) -->
           <button type="button" id="registerBtn" class="ghost" style="display:none" onclick="registerUser()">Register</button>
         </div>
+        <div class="linkrow">
+          <button type="button" class="linkbtn" onclick="openResetPassword()">Reset password</button>
+        </div>
         <div id="msg" class="msg"></div>
       </form>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div id="resetModal" class="modal-backdrop" onclick="if(event.target===this) closeResetModal()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+      <header>
+        <h3 id="resetTitle">Reset password</h3>
+        <button class="close-btn" onclick="closeResetModal()">Close</button>
+      </header>
+      <div class="content">
+        <label for="reset_username">Username</label>
+        <input id="reset_username" type="text" placeholder="user@example.com" />
+
+        <label for="reset_code">Reset code</label>
+        <input id="reset_code" type="password" placeholder="Server reset code" />
+
+        <label for="reset_newpass">New password</label>
+        <input id="reset_newpass" type="password" placeholder="At least 6 characters" />
+
+        <div class="modal-actions">
+          <button type="button" class="ghost" onclick="closeResetModal()">Cancel</button>
+          <button type="button" onclick="doResetPassword()">Reset</button>
+        </div>
+        <div id="resetMsg" class="modal-msg"></div>
+      </div>
     </div>
   </div>
 
@@ -254,6 +332,53 @@
       const u = document.getElementById('username');
       if (u) u.focus();
     });
+
+    // ----- Reset password (requires server PASSWORD_RESET_CODE) -----
+    function openResetPassword(){
+      const m = document.getElementById('resetModal');
+      const u = document.getElementById('username');
+      const ru = document.getElementById('reset_username');
+      if (ru && u) ru.value = (u.value || '').trim();
+      document.getElementById('reset_code').value = '';
+      document.getElementById('reset_newpass').value = '';
+      document.getElementById('resetMsg').textContent = '';
+      if (m) m.classList.add('show');
+    }
+
+    function closeResetModal(){
+      const m = document.getElementById('resetModal');
+      if (m) m.classList.remove('show');
+    }
+
+    async function doResetPassword(){
+      const msg = document.getElementById('resetMsg');
+      msg.textContent = 'Resetting…';
+
+      const username = document.getElementById('reset_username').value.trim();
+      const resetCode = document.getElementById('reset_code').value;
+      const newPassword = document.getElementById('reset_newpass').value;
+
+      if (!username || !resetCode || !newPassword){
+        msg.textContent = 'All fields are required.';
+        return;
+      }
+
+      try{
+        const r = await fetch('/api/auth/resetPassword', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ username, resetCode, newPassword })
+        });
+        const data = await r.json().catch(()=> ({}));
+        if (r.ok && data && data.ok){
+          msg.textContent = 'Password reset successful. You can login now.';
+        } else {
+          msg.textContent = data.error || 'Reset failed.';
+        }
+      }catch(err){
+        msg.textContent = 'Network error: ' + err.message;
+      }
+    }
   </script>
 </body>
 </html>
