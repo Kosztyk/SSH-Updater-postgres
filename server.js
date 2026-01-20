@@ -15,6 +15,9 @@ const { EventEmitter } = require('events');
 
 const PORT = process.env.PORT || 8080;
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/sshupdaterdb';
+// Optional emergency password reset code (used by the login page "Reset password" flow).
+// If not set, the unauthenticated reset endpoint is disabled.
+const PASSWORD_RESET_CODE = String(process.env.PASSWORD_RESET_CODE || '').trim();
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -37,6 +40,7 @@ CREATE TABLE IF NOT EXISTS app_user (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -63,8 +67,42 @@ CREATE INDEX IF NOT EXISTS idx_host_path_host_id ON host_container_path(host_id)
 function toId(row) { const { id, ...rest } = row; return { _id: id, ...rest }; }
 const q = (text, params=[]) => pool.query(text, params);
 
+// Whether the DB supports the app_user.role column. We attempt to migrate at startup.
+let HAS_USER_ROLE = true;
+
 async function initDbAndSecret() {
   await q(SCHEMA_SQL);
+
+  // --- lightweight migration for older DBs ---
+  // Prior builds had no role column. We add it and ensure at least one admin.
+  try {
+    // 1) Add column if missing (do NOT mark NOT NULL in the same statement; backfill first)
+    await q(`ALTER TABLE app_user ADD COLUMN IF NOT EXISTS role TEXT;`);
+    await q(`ALTER TABLE app_user ALTER COLUMN role SET DEFAULT 'user';`);
+
+    // 2) Backfill existing rows
+    await q(`UPDATE app_user SET role='user' WHERE role IS NULL;`);
+
+    // 3) Enforce NOT NULL
+    await q(`ALTER TABLE app_user ALTER COLUMN role SET NOT NULL;`);
+
+    // 4) Ensure at least one admin (otherwise the UI will hide admin functions)
+    const adminCount = await q(`SELECT COUNT(*)::int AS c FROM app_user WHERE role='admin';`);
+    if ((adminCount.rows?.[0]?.c ?? 0) === 0) {
+      await q(`
+        UPDATE app_user
+        SET role='admin'
+        WHERE id = (
+          SELECT id FROM app_user ORDER BY created_at ASC LIMIT 1
+        );
+      `);
+    }
+  } catch (e) {
+    // If we can't migrate (permissions, etc.), keep the app running in legacy mode.
+    // In legacy mode, everyone is treated as admin because roles do not exist.
+    HAS_USER_ROLE = false;
+    console.warn('Warning: failed to migrate app_user.role; continuing in legacy (no-roles) mode:', e?.message || e);
+  }
 
 // --- lightweight migration to add columns if the DB was created earlier ---
   await q(`
@@ -97,12 +135,107 @@ function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Auth required' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload;
-    next();
+    // Always refresh user info from DB (role can change, user can be deleted).
+    const sql = HAS_USER_ROLE
+      ? 'SELECT id, username, role FROM app_user WHERE id=$1'
+      : "SELECT id, username, 'admin'::text AS role FROM app_user WHERE id=$1";
+    q(sql, [payload.uid])
+      .then((r) => {
+        if (!r.rowCount) return res.status(401).json({ error: 'Invalid token' });
+        const u = r.rows[0];
+        req.user = { uid: u.id, u: u.username, role: u.role };
+        next();
+      })
+      .catch((e) => {
+        console.error('Auth lookup error:', e);
+        res.status(500).json({ error: 'Internal server error' });
+      });
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
+
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Admin required' });
+  next();
+}
+
+/* -----------------------------
+   IntelliSSH integration config
+   (used only if env vars are set)
+   NO database on sshupdater side
+----------------------------- */
+const INTELLISSH_BASE_URL = process.env.INTELLISSH_BASE_URL || 'http://192.168.68.134:8080';
+const INTELLISSH_USER = process.env.INTELLISSH_USER || '';
+const INTELLISSH_PASS = process.env.INTELLISSH_PASS || '';
+
+/**
+ * Log into IntelliSSH using a service account and return a JWT token.
+ * Uses IntelliSSH /api/auth/login (same as in Jailmaker).
+ */
+async function getIntelliSshToken() {
+  if (!INTELLISSH_BASE_URL || !INTELLISSH_USER || !INTELLISSH_PASS) {
+    throw new Error(
+      'IntelliSSH integration is not configured (set INTELLISSH_BASE_URL, INTELLISSH_USER, INTELLISSH_PASS).'
+    );
+  }
+
+  const base = INTELLISSH_BASE_URL.replace(/\/+$/, '');
+  const loginUrl = `${base}/api/auth/login`;
+
+  const resp = await fetch(loginUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: INTELLISSH_USER,
+      password: INTELLISSH_PASS,
+    }),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+
+  if (!resp.ok || !data.success || !data.token) {
+    throw new Error(`IntelliSSH login failed: ${data.message || resp.statusText}`);
+  }
+
+  return data.token;
+}
+
+/**
+ * Given a host name, return IntelliSSH /terminal/<id> URL
+ * if a session with that name exists.
+ * Host names MUST match between sshupdater and IntelliSSH.
+ */
+async function getIntelliSshTerminalUrlByName(hostName) {
+  const token = await getIntelliSshToken();
+
+  const base = INTELLISSH_BASE_URL.replace(/\/+$/, '');
+  const sessionsUrl = `${base}/api/sessions`;
+
+  const resp = await fetch(sessionsUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+    },
+  });
+
+  const data = await resp.json().catch(() => ({}));
+
+  if (!resp.ok || !data.success || !Array.isArray(data.sessions)) {
+    throw new Error(`Failed to fetch sessions from IntelliSSH: ${data.message || resp.statusText}`);
+  }
+
+  const lowerName = String(hostName).toLowerCase();
+  const match = data.sessions.find((s) => String(s.name || '').toLowerCase() === lowerName);
+
+  if (!match || typeof match.id === 'undefined') {
+    return null;
+  }
+
+  return `${base}/terminal/${match.id}`;
+}
+
 
 // ─── UI routes (same as Mongo build) ─────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -123,24 +256,43 @@ app.get('/login.html', (_req, res) => res.sendFile(path.join(__dirname, 'public'
 // ─── Auth endpoints (same names/payloads) ────────────────────────────────────
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, password } = req.body || {};
+    const { username, password, role: requestedRole } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: 'username and password are required' });
+
+    const uname = String(username).trim().toLowerCase();
 
     const { rows } = await q('SELECT COUNT(*)::int AS n FROM app_user');
     if (rows[0].n > 0) {
+      // After bootstrap, creating users requires an authenticated *admin*.
       const token = req.cookies?.token;
       if (!token) return res.status(401).json({ error: 'Auth required to add users' });
-      try { jwt.verify(token, JWT_SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+      let payload;
+      try { payload = jwt.verify(token, JWT_SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+      if (HAS_USER_ROLE) {
+        const me = await q('SELECT role FROM app_user WHERE id=$1', [payload.uid]);
+        if (!me.rowCount) return res.status(401).json({ error: 'Invalid token' });
+        if (me.rows[0].role !== 'admin') return res.status(403).json({ error: 'Admin required' });
+      }
     }
 
-    const exists = await q('SELECT 1 FROM app_user WHERE username=$1', [username]);
+    const exists = await q('SELECT 1 FROM app_user WHERE username=$1', [uname]);
     if (exists.rowCount) return res.status(409).json({ error: 'username already exists' });
 
+    // First user becomes admin automatically.
+    const finalRole = (rows[0].n === 0)
+      ? 'admin'
+      : (requestedRole === 'admin' ? 'admin' : 'user');
+
     const passwordHash = await bcrypt.hash(password, 12);
-    const ins = await q(
-      'INSERT INTO app_user(username,password_hash) VALUES ($1,$2) RETURNING id',
-      [username, passwordHash]
-    );
+    const ins = HAS_USER_ROLE
+      ? await q(
+          'INSERT INTO app_user(username,password_hash,role) VALUES ($1,$2,$3) RETURNING id',
+          [uname, passwordHash, finalRole]
+        )
+      : await q(
+          'INSERT INTO app_user(username,password_hash) VALUES ($1,$2) RETURNING id',
+          [uname, passwordHash]
+        );
     res.json({ ok: true, id: ins.rows[0].id });
   } catch (error) {
     console.error('Register error:', error);
@@ -153,18 +305,50 @@ app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: 'username and password are required' });
 
-    const r = await q('SELECT id, username, password_hash FROM app_user WHERE username=$1', [username]);
+    const uname = String(username).trim().toLowerCase();
+
+    const loginSql = HAS_USER_ROLE
+      ? 'SELECT id, username, password_hash, role FROM app_user WHERE username=$1'
+      : "SELECT id, username, password_hash, 'admin'::text AS role FROM app_user WHERE username=$1";
+    const r = await q(loginSql, [uname]);
     if (!r.rowCount) return res.status(401).json({ error: 'Invalid credentials' });
 
     const u = r.rows[0];
     const ok = await bcrypt.compare(password, u.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ uid: u.id, u: u.username }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign({ uid: u.id, u: u.username, role: u.role }, JWT_SECRET, { expiresIn: '12h' });
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 12 * 60 * 60 * 1000 });
     res.json({ ok: true });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ ok: true, user: { id: req.user.uid, username: req.user.u, role: req.user.role } });
+});
+
+// Emergency password reset (unauthenticated) using PASSWORD_RESET_CODE.
+// Intended for "forgot admin password" scenarios.
+app.post('/api/auth/resetPassword', async (req, res) => {
+  try {
+    const { username, resetCode, newPassword } = req.body || {};
+    if (!PASSWORD_RESET_CODE) return res.status(400).json({ error: 'Password reset is not configured on the server' });
+    if (!username || !resetCode || !newPassword) return res.status(400).json({ error: 'username, resetCode and newPassword are required' });
+    if (String(resetCode).trim() !== PASSWORD_RESET_CODE) return res.status(401).json({ error: 'Invalid reset code' });
+    if (String(newPassword).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    const uname = String(username).trim().toLowerCase();
+    const r = await q('SELECT id FROM app_user WHERE username=$1', [uname]);
+    if (!r.rowCount) return res.status(404).json({ error: 'User not found' });
+
+    const hash = await bcrypt.hash(String(newPassword), 12);
+    await q('UPDATE app_user SET password_hash=$1 WHERE id=$2', [hash, r.rows[0].id]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('ResetPassword error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -177,6 +361,137 @@ app.get('/api/auth/hasUsers', async (_req, res) => {
     res.json({ hasUsers: r.rows[0].n > 0 });
   } catch (error) {
     console.error('HasUsers error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── User management (admin-only) ───────────────────────────────────────────
+async function getAdminCount() {
+  if (!HAS_USER_ROLE) return 999;
+  const r = await q(`SELECT COUNT(*)::int AS n FROM app_user WHERE role='admin'`);
+  return r.rows[0].n;
+}
+
+app.get('/api/users', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const sql = HAS_USER_ROLE
+      ? `SELECT id, username, role, created_at FROM app_user ORDER BY created_at ASC`
+      : `SELECT id, username, 'admin'::text AS role, created_at FROM app_user ORDER BY created_at ASC`;
+    const r = await q(sql);
+    res.json(r.rows.map(row => ({
+      _id: row.id,
+      username: row.username,
+      role: row.role,
+      createdAt: row.created_at,
+    })));
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { username, password, role } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'username and password are required' });
+    const uname = String(username).trim().toLowerCase();
+    const exists = await q('SELECT 1 FROM app_user WHERE username=$1', [uname]);
+    if (exists.rowCount) return res.status(409).json({ error: 'username already exists' });
+
+    const passwordHash = await bcrypt.hash(String(password), 12);
+    const finalRole = (role === 'admin') ? 'admin' : 'user';
+    const ins = HAS_USER_ROLE
+      ? await q(
+          `INSERT INTO app_user(username,password_hash,role) VALUES ($1,$2,$3) RETURNING id, username, role, created_at`,
+          [uname, passwordHash, finalRole]
+        )
+      : await q(
+          `INSERT INTO app_user(username,password_hash) VALUES ($1,$2) RETURNING id, username, created_at`,
+          [uname, passwordHash]
+        );
+    const u = ins.rows[0];
+    res.json({ ok: true, user: { _id: u.id, username: u.username, role: HAS_USER_ROLE ? u.role : 'admin', createdAt: u.created_at } });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const { username, role, password } = req.body || {};
+
+    const cur = await q(
+      HAS_USER_ROLE
+        ? 'SELECT id, username, role FROM app_user WHERE id=$1'
+        : "SELECT id, username, 'admin'::text AS role FROM app_user WHERE id=$1",
+      [id]
+    );
+    if (!cur.rowCount) return res.status(404).json({ error: 'User not found' });
+    const target = cur.rows[0];
+
+    const nextRole = HAS_USER_ROLE
+      ? ((role === 'admin') ? 'admin' : (role === 'user' ? 'user' : null))
+      : null;
+    if (HAS_USER_ROLE && nextRole && target.role === 'admin' && nextRole !== 'admin') {
+      const adminCount = await getAdminCount();
+      if (adminCount <= 1) return res.status(400).json({ error: 'Cannot demote the last admin' });
+    }
+
+    if (username && String(username).trim().toLowerCase() !== target.username) {
+      const exists = await q('SELECT 1 FROM app_user WHERE username=$1 AND id<>$2', [String(username).trim().toLowerCase(), id]);
+      if (exists.rowCount) return res.status(409).json({ error: 'username already exists' });
+    }
+
+    const sets = [];
+    const params = [];
+    let p = 1;
+    if (username) { sets.push(`username=$${p++}`); params.push(String(username).trim().toLowerCase()); }
+    if (nextRole) { sets.push(`role=$${p++}`); params.push(nextRole); }
+    if (password) {
+      if (String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      const hash = await bcrypt.hash(String(password), 12);
+      sets.push(`password_hash=$${p++}`);
+      params.push(hash);
+    }
+    if (!sets.length) return res.json({ ok: true });
+
+    params.push(id);
+    const retCols = HAS_USER_ROLE ? 'id, username, role, created_at' : "id, username, created_at";
+    const upd = await q(
+      `UPDATE app_user SET ${sets.join(', ')} WHERE id=$${p} RETURNING ${retCols}`,
+      params
+    );
+    const u = upd.rows[0];
+    res.json({ ok: true, user: { _id: u.id, username: u.username, role: HAS_USER_ROLE ? u.role : 'admin', createdAt: u.created_at } });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const cur = await q(
+      HAS_USER_ROLE
+        ? 'SELECT id, role FROM app_user WHERE id=$1'
+        : "SELECT id, 'admin'::text AS role FROM app_user WHERE id=$1",
+      [id]
+    );
+    if (!cur.rowCount) return res.status(404).json({ error: 'User not found' });
+    const target = cur.rows[0];
+
+    if (HAS_USER_ROLE && target.role === 'admin') {
+      const adminCount = await getAdminCount();
+      if (adminCount <= 1) return res.status(400).json({ error: 'Cannot delete the last admin' });
+    }
+
+    await q('DELETE FROM app_user WHERE id=$1', [id]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Delete user error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -250,6 +565,36 @@ app.post('/api/hosts', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+/* -----------------------------
+   IntelliSSH terminal URL API
+   (no DB here, just HTTP to IntelliSSH)
+----------------------------- */
+app.get('/api/intellissh/terminal', requireAuth, async (req, res) => {
+  const { name } = req.query || {};
+  if (!name) {
+    return res.json({ success: false, message: 'Missing "name" query parameter.' });
+  }
+
+  try {
+    const url = await getIntelliSshTerminalUrlByName(name);
+    if (!url) {
+      return res.json({
+        success: false,
+        notFound: true,
+        message: `No IntelliSSH session found with name "${name}".`,
+      });
+    }
+    return res.json({ success: true, url });
+  } catch (err) {
+    console.error('[IntelliSSH] Error:', err);
+    return res.json({
+      success: false,
+      message: `IntelliSSH error: ${err.message || String(err)}`,
+    });
+  }
+});
+
 
 app.put('/api/hosts/:id', requireAuth, async (req, res) => {
   try {
@@ -335,14 +680,27 @@ function streamAptOnHost(host, onEvent) {
   const conn = new Client();
   const start = Date.now();
 
+  // Emit hostStart early so SSE clients show progress even while SSH negotiates.
+  // Guard to prevent double emission because we also emit on "ready".
+  let started = false;
+  const emitStartOnce = (msg) => {
+    if (started) return;
+    started = true;
+    onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+    if (msg) onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: msg });
+  };
+
   const nonInteractive = "export DEBIAN_FRONTEND=noninteractive; apt-get update -y && apt-get upgrade -y";
   const base = `bash -lc "${escForDoubleQuotes(nonInteractive)}"`;
   const cmd = (host.isRoot || host.user === 'root')
     ? base
     : `echo '${(host.password || '').replace(/'/g, "'\\''")}' | sudo -S -p '' ${base}`;
 
+  // Kick off visible progress before connect() so the UI never looks frozen.
+  setTimeout(() => emitStartOnce('connecting...\n'), 50);
+
   conn.on('ready', () => {
-    onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+    emitStartOnce();
     conn.exec(cmd, { env: { LC_ALL: 'C' } }, (err, stream) => {
       if (err) { onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, error: 'exec: ' + err.message, durationMs: Date.now() - start, exitCode: null }); conn.end(); return; }
       stream.on('close', (code) => { onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: code === 0, exitCode: code, durationMs: Date.now() - start }); conn.end(); })
@@ -350,6 +708,7 @@ function streamAptOnHost(host, onEvent) {
         .stderr.on('data', d => onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: d.toString() }));
     });
   }).on('error', (err) => {
+    emitStartOnce();
     onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, error: 'ssh: ' + err.message, durationMs: Date.now() - start, exitCode: null });
   }).connect({ host: host.ip, port: host.port || 22, username: host.user, password: host.password, readyTimeout: 20000 });
 }
@@ -357,6 +716,14 @@ function streamAptOnHost(host, onEvent) {
 function streamScriptOnHost(host, script, onEvent) {
   const conn = new Client();
   const start = Date.now();
+
+  let started = false;
+  const emitStartOnce = (msg) => {
+    if (started) return;
+    started = true;
+    onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+    if (msg) onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: msg });
+  };
 
   const b64 = Buffer.from(String(script), 'utf8').toString('base64');
   const remote = `TMP=$(mktemp) && printf '%s' '${b64}' | base64 -d > "$TMP" && chmod +x "$TMP" && bash "$TMP"; rc=$?; rm -f "$TMP"; exit $rc`;
@@ -367,8 +734,10 @@ function streamScriptOnHost(host, script, onEvent) {
     ? `bash -lc '${remoteEsc}'`
     : `echo '${pw}' | sudo -S -p '' bash -lc '${remoteEsc}'`;
 
+  setTimeout(() => emitStartOnce('connecting...\n'), 50);
+
   conn.on('ready', () => {
-    onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+    emitStartOnce();
     conn.exec(cmd, { env: DEFAULT_ENV }, (err, stream) => {
       if (err) { onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, error: 'exec: ' + err.message, durationMs: Date.now() - start, exitCode: null }); conn.end(); return; }
       stream.on('close', (code) => { onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: code === 0, exitCode: code, durationMs: Date.now() - start }); conn.end(); })
@@ -376,6 +745,7 @@ function streamScriptOnHost(host, script, onEvent) {
         .stderr.on('data', d => onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: d.toString() }));
     });
   }).on('error', (err) => {
+    emitStartOnce();
     onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, error: 'ssh: ' + err.message, durationMs: Date.now() - start, exitCode: null });
   }).connect({ host: host.ip, port: host.port || 22, username: host.user, password: host.password, readyTimeout: 20000 });
 }
@@ -384,12 +754,26 @@ function streamContainersOnHost(host, onEvent) {
   const conn = new Client();
   const start = Date.now();
 
+  let started = false;
+  const emitStartOnce = (msg) => {
+    if (started) return;
+    started = true;
+    onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+    if (msg) onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: msg });
+  };
+
   const paths = (Array.isArray(host.containerPaths) ? host.containerPaths : [])
     .map(s => String(s).replace(/\r/g, '').trim())
     .filter(Boolean);
 
   if (!host.hasContainers || paths.length === 0) {
-    process.nextTick(() => onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: true, exitCode: 0, durationMs: 0 }));
+    // Emit a full lifecycle so SSE clients can reliably render completion even when we skip.
+    // Small delay helps avoid races where the browser attaches listeners after EventSource connects.
+    setTimeout(() => {
+      onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+      onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: 'No containers configured for this host; skipping.\n' });
+      onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: true, exitCode: 0, durationMs: 0 });
+    }, 50);
     return;
   }
 
@@ -403,8 +787,10 @@ function streamContainersOnHost(host, onEvent) {
     ? base
     : `echo '${(host.password || '').replace(/'/g, "'\\''")}' | sudo -S -p '' ${base}`;
 
+  setTimeout(() => emitStartOnce('connecting...\n'), 50);
+
   conn.on('ready', () => {
-    onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
+    emitStartOnce();
     conn.exec(fullCmd, { env: { LC_ALL: 'C' } }, (err, stream) => {
       if (err) { onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, exitCode: null, durationMs: Date.now() - start, error: 'exec: ' + err.message }); conn.end(); return; }
       stream.on('close', (code) => { onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: code === 0, exitCode: code, durationMs: Date.now() - start }); conn.end(); })
@@ -412,6 +798,7 @@ function streamContainersOnHost(host, onEvent) {
         .stderr.on('data', d => onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: d.toString() }));
     });
   }).on('error', (err) => {
+    emitStartOnce();
     onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, exitCode: null, durationMs: Date.now() - start, error: 'ssh: ' + err.message });
   }).connect({ host: host.ip, port: host.port || 22, username: host.user, password: host.password, readyTimeout: 20000 });
 }
@@ -424,20 +811,18 @@ function streamFileToHost(host, fileB64, fileName, action, command, onEvent) {
     
     const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     
-    // Determine the appropriate upload path based on user privileges
+    // Determine upload path. For non-root users, do NOT assume /home/<user>.
+    // Many systems (e.g., TrueNAS, some BSDs) use /var/home/<user> or other paths.
+    // We'll resolve the actual home directory via SFTP realpath('.') and fall back
+    // to /home/<user> only if resolution fails.
     let remotePath;
-    if (host.isRoot || host.user === 'root') {
-      remotePath = `/root/${safeFileName}`;
-    } else {
-      // For non-root users, upload to their home directory or /tmp
-      remotePath = `/home/${host.user}/${safeFileName}`;
-    }
+    const isRootUser = !!(host.isRoot || host.user === 'root');
+    remotePath = isRootUser ? `/root/${safeFileName}` : `/home/${host.user}/${safeFileName}`;
 
     conn.on('ready', () => {
       onEvent({ type: 'hostStart', host: host.name, ip: host.ip });
       onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `🚀 Starting ${action} operation for ${fileName}\n` });
-      onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `👤 User: ${host.user} (${host.isRoot || host.user === 'root' ? 'root' : 'non-root'})\n` });
-      onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `📁 Target path: ${remotePath}\n` });
+      onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `👤 User: ${host.user} (${isRootUser ? 'root' : 'non-root'})\n` });
 
       // Use SFTP for reliable file upload
       conn.sftp((err, sftp) => {
@@ -451,9 +836,11 @@ function streamFileToHost(host, fileB64, fileName, action, command, onEvent) {
 
         const fileBuffer = Buffer.from(fileB64, 'base64');
         onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `📦 File size: ${fileBuffer.length} bytes\n` });
-        onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `⬆️  Uploading file via SFTP...\n` });
 
-        const writeStream = sftp.createWriteStream(remotePath);
+        const beginUpload = () => {
+          onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `📁 Target path: ${remotePath}\n` });
+          onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `⬆️  Uploading file via SFTP...\n` });
+          const writeStream = sftp.createWriteStream(remotePath);
         
         writeStream.on('close', () => {
           onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `✅ File uploaded successfully to ${remotePath}\n` });
@@ -492,15 +879,36 @@ function streamFileToHost(host, fileB64, fileName, action, command, onEvent) {
           }
         });
 
-        writeStream.write(fileBuffer);
-        writeStream.end();
+          writeStream.write(fileBuffer);
+          writeStream.end();
+        };
+
+        // Resolve actual home dir for non-root users
+        if (!isRootUser) {
+          try {
+            sftp.realpath('.', (rpErr, homeDir) => {
+              if (!rpErr && homeDir) {
+                const base = String(homeDir).replace(/\/$/, '');
+                remotePath = `${base}/${safeFileName}`;
+                onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `🏠 Resolved remote home: ${base}\n` });
+              } else {
+                onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `⚠️  Could not resolve remote home via SFTP; using default: /home/${host.user}\n` });
+              }
+              beginUpload();
+            });
+          } catch (_e) {
+            onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `⚠️  Home resolution exception; using default: /home/${host.user}\n` });
+            beginUpload();
+          }
+        } else {
+          beginUpload();
+        }
       });
 
       function executeAction() {
         onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `⚡ Executing ${action} action...\n` });
         
         let cmd = '';
-        const isRootUser = host.isRoot || host.user === 'root';
         const escapedPassword = escSingle(host.password || '');
         
         if (action === 'install' && safeFileName.endsWith('.deb')) {
@@ -535,10 +943,14 @@ function streamFileToHost(host, fileB64, fileName, action, command, onEvent) {
         } else if (action === 'run' && command) {
           onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `💻 Executing command: ${command}\n` });
           
-          // Replace {FILE_PATH} placeholder with the actual uploaded file path
+          // Replace {FILE_PATH} (and common shell variants) with the actual uploaded file path
           let processedCommand = command;
-          if (command.includes('{FILE_PATH}')) {
-            processedCommand = command.replace(/{FILE_PATH}/g, remotePath);
+          const hasToken = command.includes('{FILE_PATH}') || /\$\{?FILE_PATH\}?/g.test(command);
+          if (hasToken) {
+            processedCommand = processedCommand
+              .replace(/{FILE_PATH}/g, remotePath)
+              .replace(/\$\{FILE_PATH\}/g, remotePath)
+              .replace(/\$FILE_PATH\b/g, remotePath);
             onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `📝 Using file path: ${remotePath}\n` });
           } else {
             // If no placeholder, assume the command should reference the uploaded file
@@ -560,41 +972,47 @@ function streamFileToHost(host, fileB64, fileName, action, command, onEvent) {
             }
           }
           
-          // Check if command requires root privileges
-          const needsSudo = processedCommand.includes('dpkg') || processedCommand.includes('apt-get') || 
-                           processedCommand.includes('install') || processedCommand.includes('systemctl') || 
-                           processedCommand.includes('service ') || processedCommand.includes('/root/');
-          
+          // For Upload & Run Command: always execute with sudo for non-root users.
+          // The sudo password is sourced from the host record (same credential used for SSH).
+          // If the remote host requires a different sudo password, it must be stored accordingly.
           if (isRootUser) {
-            // Root user - execute command directly
             cmd = `echo "=== EXECUTING COMMAND AS ROOT ===" && ` +
                   `echo "Command: ${processedCommand}" && ` +
                   `echo "=== COMMAND OUTPUT ===" && ` +
                   `${processedCommand} 2>&1 ; ` +
                   `echo "=== COMMAND EXIT CODE: $? ==="`;
-          } else if (needsSudo) {
-            // Non-root user running privileged command - use sudo with password
-            cmd = `echo "=== EXECUTING PRIVILEGED COMMAND WITH SUDO ===" && ` +
-                  `echo "Command: ${processedCommand}" && ` +
-                  `echo "=== COMMAND OUTPUT ===" && ` +
-                  `echo '${escapedPassword}' | sudo -S -p '' ${processedCommand} 2>&1 ; ` +
-                  `echo "=== COMMAND EXIT CODE: $? ==="`;
           } else {
-            // Non-root user running non-privileged command - execute directly
-            cmd = `echo "=== EXECUTING COMMAND ===" && ` +
-                  `echo "Command: ${processedCommand}" && ` +
+            if (!host.password) {
+              onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `❌ No password stored for host; cannot sudo automatically.\n` });
+              onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, error: 'missing password for sudo', durationMs: Date.now() - start, exitCode: null });
+              conn.end();
+              resolve();
+              return;
+            }
+
+            // Avoid double-sudo if user included it.
+            const cleaned = String(processedCommand).replace(/^\s*sudo\s+/, '');
+            const sudoWrapped = `sudo -S -p '' -E bash -lc ${JSON.stringify(cleaned)}`;
+            cmd = `echo "=== EXECUTING COMMAND WITH SUDO (NON-ROOT USER) ===" && ` +
+                  `echo "Command: ${cleaned}" && ` +
                   `echo "=== COMMAND OUTPUT ===" && ` +
-                  `${processedCommand} 2>&1 ; ` +
+                  `echo '${escapedPassword}' | ${sudoWrapped} 2>&1 ; ` +
                   `echo "=== COMMAND EXIT CODE: $? ==="`;
           }
         } else if (action === 'upload') {
           onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `📋 Verifying upload...\n` });
+
+          // NOTE: Do not fail the whole operation just because optional utilities are missing.
+          // Some minimal images do not have `file` installed; if we call it unguarded, SSH exits 127
+          // and the UI marks the operation as FAIL even though the upload succeeded.
           cmd = `echo "=== UPLOAD VERIFICATION ===" && ` +
-                `ls -la '${remotePath}' && ` +
-                `echo "=== FILE INFO ===" && ` +
-                `file '${remotePath}' && ` +
-                `echo "=== FILE SIZE: \$(stat -c%s '${remotePath}') bytes ===" && ` +
-                `echo "=== UPLOAD SUCCESSFUL ==="`;
+                `ls -la '${remotePath}' || exit 2; ` +
+                `echo "=== FILE INFO ==="; ` +
+                `if command -v file >/dev/null 2>&1; then file '${remotePath}'; else echo "file: not installed (skipping)"; fi; ` +
+                `echo "=== FILE SIZE ==="; ` +
+                `if command -v stat >/dev/null 2>&1; then echo "$(stat -c%s '${remotePath}') bytes"; else wc -c < '${remotePath}' | awk '{print $1 " bytes"}'; fi; ` +
+                `echo "=== UPLOAD SUCCESSFUL ==="; ` +
+                `exit 0`;
         } else {
           onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `📁 Upload only - no additional action\n` });
           cmd = `echo "File uploaded to: ${remotePath}" && ` +
@@ -603,7 +1021,13 @@ function streamFileToHost(host, fileB64, fileName, action, command, onEvent) {
 
         onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `🔨 Executing remote command...\n` });
 
-        conn.exec(cmd, { env: DEFAULT_ENV }, (err, stream) => {
+        const execOpts = { env: DEFAULT_ENV };
+        // Some hosts enforce sudo requiretty; allocating a PTY makes sudo reliable.
+        if (!isRootUser && typeof cmd === 'string' && cmd.includes('sudo -S')) {
+          execOpts.pty = true;
+        }
+
+        conn.exec(cmd, execOpts, (err, stream) => {
           if (err) {
             onEvent({ type: 'log', host: host.name, ip: host.ip, chunk: `❌ Command execution failed: ${err.message}\n` });
             onEvent({ type: 'hostEnd', host: host.name, ip: host.ip, ok: false, error: 'exec: ' + err.message, durationMs: Date.now() - start, exitCode: null });
@@ -684,6 +1108,10 @@ app.get('/api/stream/run/:id', requireAuth, async (req, res) => {
     const host = { ...h, isRoot: h.is_root, hasContainers: h.has_containers, containerPaths: cp };
 
     sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
+    sseSend(res, 'ping', { ts: Date.now() });
+    sseSend(res, 'ping', { ts: Date.now() });
+    sseSend(res, 'ping', { ts: Date.now() });
     streamAptOnHost(host, (ev) => {
       if (ev.type === 'hostStart') sseSend(res, 'hostStart', ev);
       else if (ev.type === 'log') sseSend(res, 'log', ev);
@@ -700,6 +1128,9 @@ app.get('/api/stream/runAll', requireAuth, async (_req, res) => {
     const hosts = (await q('SELECT * FROM host')).rows;
 
     sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
+    sseSend(res, 'ping', { ts: Date.now() });
+    sseSend(res, 'ping', { ts: Date.now() });
     if (!hosts.length) { sseSend(res, 'done', { empty: true }); return res.end(); }
 
     let remaining = hosts.length;
@@ -723,6 +1154,49 @@ app.get('/api/stream/runAll', requireAuth, async (_req, res) => {
   } catch (error) {
     console.error('Stream run all error:', error);
     res.status(500).end();
+  }
+});
+
+// ─── Streaming: apt (selected hosts) ────────────────────────────────────────
+app.get('/api/stream/runSelected', requireAuth, async (req, res) => {
+  try {
+    const raw = String(req.query.ids || '').trim();
+    const ids = raw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => Number(s))
+      .filter(n => Number.isFinite(n));
+
+    sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
+    if (!ids.length) { sseSend(res, 'done', { empty: true }); return res.end(); }
+
+    const hosts = (await q('SELECT * FROM host WHERE id = ANY($1::int[])', [ids])).rows;
+    if (!hosts.length) { sseSend(res, 'done', { empty: true }); return res.end(); }
+
+    let remaining = hosts.length;
+    hosts.forEach(async (h) => {
+      try {
+        const cp = (await q('SELECT path FROM host_container_path WHERE host_id=$1', [h.id])).rows.map(r => r.path);
+        const host = { ...h, isRoot: h.is_root, hasContainers: h.has_containers, containerPaths: cp };
+        streamAptOnHost(host, (ev) => {
+          if (ev.type === 'hostStart') sseSend(res, 'hostStart', ev);
+          else if (ev.type === 'log') sseSend(res, 'log', ev);
+          else if (ev.type === 'hostEnd') {
+            sseSend(res, 'hostEnd', ev);
+            if (--remaining === 0) { sseSend(res, 'done', {}); res.end(); }
+          }
+        });
+      } catch (error) {
+        console.error('Error processing selected host:', error);
+        if (--remaining === 0) { sseSend(res, 'done', {}); res.end(); }
+      }
+    });
+  } catch (error) {
+    console.error('Stream run selected error:', error);
+    try { sseSend(res, 'done', {}); } catch(_) {}
+    res.end();
   }
 });
 
@@ -782,6 +1256,7 @@ app.get('/api/stream/runCustom', requireAuth, (req, res) => {
     if (!ee) return res.status(404).end();
 
     sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
 
     const onStart = (d) => sseSend(res, 'hostStart', d);
     const onLog = (d) => sseSend(res, 'log', d);
@@ -882,6 +1357,7 @@ app.get('/api/stream/uploadFile', requireAuth, (req, res) => {
     if (!ee) return res.status(404).end();
 
     sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
 
     const onStart = (d) => sseSend(res, 'hostStart', d);
     const onLog = (d) => sseSend(res, 'log', d);
@@ -914,6 +1390,7 @@ app.get('/api/stream/runContainersAll', requireAuth, async (_req, res) => {
     )).rows;
 
     sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
     if (!hosts.length) { sseSend(res, 'done', { empty: true }); return res.end(); }
 
     let remaining = hosts.length;
@@ -937,6 +1414,62 @@ app.get('/api/stream/runContainersAll', requireAuth, async (_req, res) => {
   }
 });
 
+// ─── Streaming: containers (selected hosts) ─────────────────────────────────
+app.get('/api/stream/runContainersSelected', requireAuth, async (req, res) => {
+  try {
+    const raw = String(req.query.ids || '').trim();
+    const ids = raw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => Number(s))
+      .filter(n => Number.isFinite(n));
+
+    sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
+    if (!ids.length) { sseSend(res, 'done', { empty: true }); return res.end(); }
+
+    const hosts = (await q('SELECT * FROM host WHERE id = ANY($1::int[])', [ids])).rows;
+    if (!hosts.length) { sseSend(res, 'done', { empty: true }); return res.end(); }
+
+    let remaining = hosts.length;
+    hosts.forEach(async (h) => {
+      const started = Date.now();
+      try {
+        const cp = (await q('SELECT path FROM host_container_path WHERE host_id=$1', [h.id])).rows.map(r => r.path);
+        const host = { ...h, isRoot: h.is_root, hasContainers: h.has_containers, containerPaths: cp };
+
+        // If no paths, report a clean "skip" and keep exit code 0 so UI shows OK.
+        if (!Array.isArray(cp) || cp.length === 0) {
+          sseSend(res, 'hostStart', { type: 'hostStart', host: host.name, ip: host.ip });
+          sseSend(res, 'log', { type: 'log', host: host.name, ip: host.ip, chunk: 'No container paths configured; skipping.\n' });
+          sseSend(res, 'hostEnd', { type: 'hostEnd', host: host.name, ip: host.ip, ok: true, durationMs: Date.now() - started, exitCode: 0 });
+          if (--remaining === 0) { sseSend(res, 'done', {}); res.end(); }
+          return;
+        }
+
+        streamContainersOnHost(host, ev => {
+          if (ev.type === 'hostStart') sseSend(res, 'hostStart', ev);
+          else if (ev.type === 'log') sseSend(res, 'log', ev);
+          else if (ev.type === 'hostEnd') {
+            sseSend(res, 'hostEnd', ev);
+            if (--remaining === 0) { sseSend(res, 'done', {}); res.end(); }
+          }
+        });
+      } catch (error) {
+        console.error('Error processing selected host containers:', error);
+        sseSend(res, 'hostStart', { type: 'hostStart', host: h.name, ip: h.ip });
+        sseSend(res, 'hostEnd', { type: 'hostEnd', host: h.name, ip: h.ip, ok: false, error: error.message, durationMs: Date.now() - started, exitCode: null });
+        if (--remaining === 0) { sseSend(res, 'done', {}); res.end(); }
+      }
+    });
+  } catch (error) {
+    console.error('Stream run containers selected error:', error);
+    try { sseSend(res, 'done', {}); } catch(_) {}
+    res.end();
+  }
+});
+
 app.get('/api/stream/runContainers/:id', requireAuth, async (req, res) => {
   try {
     const r = await q('SELECT * FROM host WHERE id=$1', [req.params.id]);
@@ -947,6 +1480,7 @@ app.get('/api/stream/runContainers/:id', requireAuth, async (req, res) => {
     const host = { ...h, isRoot: h.is_root, hasContainers: h.has_containers, containerPaths: cp };
 
     sseInit(res);
+    sseSend(res, 'ping', { ts: Date.now() });
     streamContainersOnHost(host, ev => {
       if (ev.type === 'hostStart') sseSend(res, 'hostStart', ev);
       else if (ev.type === 'log') sseSend(res, 'log', ev);
@@ -980,3 +1514,4 @@ app.use((req, res) => {
     process.exit(1); 
   }
 })();
+
