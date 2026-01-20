@@ -49,6 +49,7 @@ services:
       DATABASE_URL: postgres://user:password1@db:5432/sshupdaterdb
       NODE_ENV: production
       PORT: "8080"
+      PASSWORD_RESET_CODE: "changeme"
     ports:
       - "8080:8080"
     volumes:
