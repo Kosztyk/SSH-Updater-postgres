@@ -1,6 +1,6 @@
 {
   "name": "ssh-updater",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Bulk SSH updater/runner with upload & run, PostgreSQL auth/storage, SSE streaming UI",
   "main": "server.js",
   "scripts": {
