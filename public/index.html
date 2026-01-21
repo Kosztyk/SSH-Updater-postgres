@@ -291,6 +291,8 @@
     .host-chooser { max-height: 240px; overflow:auto; border:1px solid var(--card-border); border-radius:12px; padding:10px; background:rgba(255,255,255,.04); }
     .host-chooser label { display:flex; align-items:center; gap:8px; margin:6px 0; font-weight:600; }
     .host-chooser .muted { color:var(--muted); font-size:12px; }
+    .host-chooser-search{ width:100%; height:34px; padding:8px 10px; border-radius:10px; border:1px solid var(--card-border); background:rgba(255,255,255,.04); color:var(--text); margin:6px 0 10px; }
+    .host-chooser-search::placeholder{ color:var(--muted); }
 
     /* Tools view layout: keep buttons on one line and make chooser narrower */
     .tools-grid{ grid-template-columns: minmax(0, 1fr) 300px; }
@@ -587,6 +589,7 @@ apt-get update -y && apt-get upgrade -y
               <!-- Right: unified host chooser -->
               <div>
                 <label>Choose hosts</label>
+                <input id="chooseHostSearch" type="text" class="host-chooser-search" placeholder="Search host name, IP, or user…" autocomplete="off" />
                 <div class="host-chooser" id="hostChooser">
                   <label><input type="checkbox" id="chooseAll" onchange="toggleChooseAll(this.checked)" /> <strong>Select all</strong></label>
                   <!-- host checkboxes injected here -->
@@ -1116,16 +1119,38 @@ apt-get update -y && apt-get upgrade -y
     function renderChooserFromData(data){
       const chooser = document.getElementById('hostChooser');
       if (!chooser) return;
+
+      // Preserve current selections (useful if refresh() is triggered)
+      const prevSelected = new Set(
+        Array.from(document.querySelectorAll('#hostChooser input[type=checkbox][data-host]:checked')).map(cb => String(cb.value))
+      );
+
       chooser.querySelectorAll('label[data-dyn]').forEach(el => el.remove());
+
       data.forEach(h => {
         const row = document.createElement('label');
         row.setAttribute('data-dyn','1');
+
+        const id = String(h._id);
+        const name = (h.name || '');
+        const ip = (h.ip || '');
+        const user = (h.user || '');
         const pathsCount = Array.isArray(h.containerPaths) ? h.containerPaths.length : 0;
-        row.innerHTML = `<input type="checkbox" data-host value="${h._id}" /> ${escapeHtml(h.name)}
-          <span class="muted">(${escapeHtml(h.ip)})</span>
+
+        // Used by the host search filter
+        row.dataset.search = `${name} ${ip} ${user}`.toLowerCase();
+
+        const checked = prevSelected.has(id) ? 'checked' : '';
+        row.innerHTML = `<input type="checkbox" data-host value="${escapeHtml(id)}" ${checked} /> ${escapeHtml(name)}
+          <span class="muted">(${escapeHtml(ip)})</span>
           ${pathsCount>0?`<span class="badge" title="${pathsCount} path${pathsCount===1?'':'s'}">${pathsCount}</span>`:''}`;
+
         chooser.appendChild(row);
       });
+
+      // Re-apply current filter (if any) and sync Select all state.
+      filterChooseHosts();
+      syncChooseAllCheckbox();
     }
 
     // ---------- File Upload Functions ----------
@@ -1912,13 +1937,56 @@ apt-get update -y && apt-get upgrade -y
       reader.onload = () => { document.getElementById('customScript').value = reader.result; };
       reader.readAsText(f);
     });
-    function toggleChooseAll(checked) { document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = checked); }
+    function getVisibleChooserHostCheckboxes(){
+      return Array.from(document.querySelectorAll('#hostChooser input[type=checkbox][data-host]')).filter(cb => {
+        const row = cb.closest('label');
+        return row && row.getAttribute('data-dyn') === '1' && row.style.display !== 'none';
+      });
+    }
+
+    function syncChooseAllCheckbox(){
+      const all = document.getElementById('chooseAll');
+      if (!all) return;
+      const visible = getVisibleChooserHostCheckboxes();
+      if (visible.length === 0) {
+        all.checked = false;
+        all.indeterminate = false;
+        return;
+      }
+      const checkedCount = visible.filter(cb => cb.checked).length;
+      all.checked = checkedCount === visible.length;
+      all.indeterminate = checkedCount > 0 && checkedCount < visible.length;
+    }
+
+    function filterChooseHosts(){
+      const inp = document.getElementById('chooseHostSearch');
+      const q = (inp ? inp.value : '').trim().toLowerCase();
+      const rows = Array.from(document.querySelectorAll('#hostChooser label[data-dyn="1"]'));
+      rows.forEach(row => {
+        const hay = (row.dataset.search || row.textContent || '').toLowerCase();
+        row.style.display = (!q || hay.includes(q)) ? '' : 'none';
+      });
+      syncChooseAllCheckbox();
+    }
+
+    // Host chooser search box
+    document.getElementById('chooseHostSearch')?.addEventListener('input', debounce(filterChooseHosts, 80));
+
+    // Keep Select all state accurate when user checks/unchecks hosts
+    document.getElementById('hostChooser')?.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t && t.matches && t.matches('input[type=checkbox][data-host]')) syncChooseAllCheckbox();
+    });
+
+function toggleChooseAll(checked) { getVisibleChooserHostCheckboxes().forEach(cb => cb.checked = checked); syncChooseAllCheckbox(); }
     function utf8ToB64(str) { return btoa(unescape(encodeURIComponent(str))); }
     function resetCustomForm() {
       document.getElementById('customScript').value = '';
       document.getElementById('scriptFile').value = '';
       document.querySelectorAll('#hostChooser input[type=checkbox][data-host]').forEach(cb => cb.checked = false);
-      const all = document.getElementById('chooseAll'); if (all) all.checked = false;
+      const all = document.getElementById('chooseAll'); if (all) { all.checked = false; all.indeterminate = false; }
+      const s = document.getElementById('chooseHostSearch'); if (s) s.value = '';
+      filterChooseHosts();
     }
     async function runCustom() {
       const script = document.getElementById('customScript').value;
